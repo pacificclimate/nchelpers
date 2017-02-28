@@ -107,27 +107,21 @@ class CFDataset(Dataset):
         :param dim_names: (str) List of names of dimensions of interest, None for all dimensions in file
         :return: (dict) Dictionary mapping dimension name to canonical axis name, for specified dimension names
         """
-        # TODO: Remove debugging print statements
         if not dim_names:
             dim_names = self.dim_names()
 
         if len(dim_names) == 0:
             return {}
 
-        print('\ndim_axes(', dim_names, ')')
-
         # Start with our best guess
         axis_to_dim = self.dim_axes_from_names(dim_names)
-        print('axis_to_dim = ', axis_to_dim)
 
         # Then fill in the rest from the 'axis' attributes
         # TODO: Does this happen? i.e., when are dimension names the same as axis names?
         # Alternatively, is this some kind of (relatively benign) programming error?
         for axis in axis_to_dim.keys():
-            print(axis)
             if axis in self.dimensions and axis in self.variables \
                     and hasattr(self.variables[axis], 'axis'):
-                print('extra')
                 axis_to_dim[axis] = self.variables[axis].axis
 
                 # Apparently this is how a "space" dimension is attributed?
@@ -195,7 +189,6 @@ class CFDataset(Dataset):
             raise ValueError("Cannot format a time range with resolution '{}' (only yearly, monthly or daily)"
                              .format(self.time_resolution))
         t_min, t_max = num2date(self.time_range, self.time_steps['units'], self.time_steps['calendar'])
-        print(t_min, t_max)
         return '{}-{}'.format(t_min.strftime(format), t_max.strftime(format))
 
     @property
