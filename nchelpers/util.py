@@ -1,5 +1,5 @@
 def resolution_standard_name(seconds):
-    '''Returns a string given a time resolution in seconds'''
+    '''Return a standard descriptive string given a time resolution in seconds'''
     return {
         60: '1-minute',
         120: '2-minute',

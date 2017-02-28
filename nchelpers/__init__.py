@@ -10,26 +10,26 @@ class CFDataset(Dataset):
     """Represents a CF (climate and forecast) dataset stored in a NetCDF file.
     Methods on this class expose metadata that is expected to be found in such files,
     and values computed from that metadata.
+    
+    Some of this class replaces the functionality of helper functions defined in pacificclimate/modelmeta. The
+    following list maps those functions to properties/methods of this class.
 
-    / == done
-    /get_file_metadata
-        - convert to properties that alias actual nc file attributes
-        - don't include time metadata; provide direct properties on CFDataset instead
-    /create_unique_id
-
-    /nc_get_dim_axes_from_names
-    /nc_get_dim_names
-    /nc_get_dim_axes
-    /get_climatology_bounds_var_name
-    /is_multi_year_mean
-    /get_time_step_size
-    /get_time_resolution
-    /get_timeseries -> time_steps
-    /get_time_range
-    /get_first_MiB_md5sum
-    /get_important_varnames
+    get_file_metadata -> metadata.<global attribute>
+        - <global attribute> is the unified name for actual CF standard global attributes in the NetCDF file
+        - doesn't include time metadata; use properties below instead
+    create_unique_id -> unique_id
+    nc_get_dim_axes_from_names -> dim_axes_from_names
+    nc_get_dim_names -> dim_names
+    nc_get_dim_axes -> dim_axes
+    get_climatology_bounds_var_name -> climatology_bounds_var_name
+    is_multi_year_mean -> is_multi_year_mean
+    get_time_step_size -> time_step_size
+    get_time_resolution -> time_resolution
+    get_timeseries -> time_steps
+    get_time_range -> time_range
+    get_first_MiB_md5sum -> first_MiB_md5sum
+    get_important_varnames -> important_varnames, dependent_varnames
     """
-    # TODO: Improve this lame documentation ^^
 
     def __init__(self, *args, **kwargs):
         # super(netCDF4.Dataset, self).__init__(*args, **kwargs)  # Python 2. Uh-oh, doesn't work in 3
@@ -179,14 +179,17 @@ class CFDataset(Dataset):
             'datetime': num2date(t[:], t.units, t.calendar)
         }
 
-    # TODO: Is this property useful anywhere except in time_range_formatted?
+    # TODO: Is this property useful anywhere except in time_range_formatted? If not, inline it.
     @property
     def time_range(self):
+        """Minimum and maximum timesteps in the file"""
         t = self.time_steps['numeric']
         return np.min(t), np.max(t)
 
+    # TODO: Is this property useful anywhere except in unique_id? If not, inline it.
     @property
     def time_range_formatted(self):
+        """Format the time range as string in YYYY[mm[dd]] format, min and max separated by a dash"""
         format = {'yearly': '%Y', 'monthly': '%Y%m', 'daily': '%Y%m%d'}.get(self.time_resolution, None)
         if not format:
             raise ValueError("Cannot format a time range with resolution '{}' (only yearly, monthly or daily)"
@@ -197,6 +200,7 @@ class CFDataset(Dataset):
 
     @property
     def time_step_size(self):
+        """Median of all intervals between successive timesteps in the file"""
         time_steps = self.time_steps
         match = re.match('(days|hours|minutes|seconds) since.*', time_steps['units'])
         if match:
@@ -208,7 +212,7 @@ class CFDataset(Dataset):
 
     @property
     def time_resolution(self):
-        """Returns a standard string that describes the time resolution of the file"""
+        """A standard string that describes the time resolution of the file"""
         #if self.is_multi_year_mean:
         #    return 'other'
         return resolution_standard_name(self.time_step_size)
@@ -297,6 +301,7 @@ class CFDataset(Dataset):
 
     @property
     def metadata(self):
+        """Prefix for all aliased (common-name) global metadata attributes"""
         return self.UnifiedMetadata(self)
 
     @property
