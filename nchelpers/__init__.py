@@ -1,9 +1,9 @@
 import hashlib
 import re
 
-from netCDF4 import Dataset, num2date
+from netCDF4 import Dataset, num2date, date2num
 import numpy as np
-from nchelpers.util import resolution_standard_name, time_to_seconds
+from nchelpers.util import resolution_standard_name, time_to_seconds, standard_climo_periods
 
 
 class CFDataset(Dataset):
@@ -32,8 +32,7 @@ class CFDataset(Dataset):
     """
 
     def __init__(self, *args, **kwargs):
-        # super(netCDF4.Dataset, self).__init__(*args, **kwargs)  # Python 2. Uh-oh, doesn't work in 3
-        super().__init__(*args, **kwargs)
+        super(CFDataset, self).__init__(*args, **kwargs)
 
     @property
     def first_MiB_md5sum(self):
@@ -173,10 +172,10 @@ class CFDataset(Dataset):
             'datetime': num2date(t[:], t.units, t.calendar)
         }
 
-    # TODO: Is this property useful anywhere except in time_range_formatted? If not, inline it.
     @property
     def time_range(self):
         """Minimum and maximum timesteps in the file"""
+        # TODO: Must we really compute min and max of t? Can time variables really be non-monotonic?
         t = self.time_steps['numeric']
         return np.min(t), np.max(t)
 
@@ -284,13 +283,19 @@ class CFDataset(Dataset):
             },
         }
 
-        def __getattr__(self, item):
-            # TODO: Do we want more explict exceptions like the one in _get_file_metadata?
-            # There are 3 errors here that get munged into one exception
+        def __getattr__(self, alias):
+            project_id = self.dataset.project_id
+            if project_id not in ['CMIP3', 'CMIP5']:
+                raise ValueError("Expected file to have project id of 'CMIP3' or 'CMIP5', found '{}'"
+                                 .format(project_id))
+            if alias not in self._aliases.keys():
+                raise AttributeError("No such unified attribute: '{}'".format(alias))
+            attr = self._aliases[alias][project_id]
             try:
-                return getattr(self.dataset, self._aliases[item][self.dataset.project_id])
+                return getattr(self.dataset, attr)
             except:
-                raise AttributeError
+                raise AttributeError("Expected file to contain attribute '{}' but no such attribute exists"
+                                     .format(attr))
 
     @property
     def metadata(self):
@@ -315,3 +320,24 @@ class CFDataset(Dataset):
             axes=axes,
         )\
             .replace('+', '-')
+
+    @property
+    def is_unprocessed_model_output(self):
+        """True iff the content of the file is unprocessed model output.
+        This allows us to discern between raw amd downscaled model output, for example"""
+        try:
+            self.metadata.model
+        except AttributeError:
+            return False
+        else:
+            return True
+
+    @property
+    def climo_periods(self):
+        """List of those standard climatological periods (see util.standard_climo_periods) that are a subset of the
+        date range in the file."""
+        s_time, e_time = self.time_range
+        time_steps = self.time_steps
+        return dict([(k, v) for k, v in standard_climo_periods(time_steps['calendar']).items()
+                     if date2num(v[0], units=time_steps['units'], calendar=time_steps['calendar']) > s_time and
+                     date2num(v[1], units=time_steps['units'], calendar=time_steps['calendar']) < e_time])

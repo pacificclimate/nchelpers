@@ -82,3 +82,12 @@ def test_metadata(tiny_gcm):
 
 def test_unique_id(tiny_gcm):
     assert tiny_gcm.unique_id == 'tasmax_daily_BNU-ESM_historical_r1i1p1_19650101-19750101'
+
+
+def test_is_unprocessed_model_output(tiny_gcm):
+    assert tiny_gcm.is_unprocessed_model_output == True
+
+
+def test_climo_periods(tiny_gcm):
+    # TODO: Create a more interesting test for this property
+    assert set(tiny_gcm.climo_periods.keys()) == set()
