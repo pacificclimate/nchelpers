@@ -68,8 +68,13 @@ class CFDataset(Dataset):
         variable names.
         """
         variables = set(self.variables.keys())
-        dimensions = set(self.dimensions.keys())
-        return [v for v in variables - dimensions if 'bnds' not in v]
+        non_dependent_variables = set(self.dimensions.keys())
+        for variable in self.variables.values():
+            if hasattr(variable, 'bounds'):
+                non_dependent_variables.add(variable.bounds)
+            if hasattr(variable, 'coordinates'):
+                non_dependent_variables.update(variable.coordinates.split())
+        return [v for v in variables - non_dependent_variables]
     # Define an alias with a more explantory name
     dependent_varnames = important_varnames
 
