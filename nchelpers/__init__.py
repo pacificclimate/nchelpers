@@ -153,18 +153,23 @@ class CFDataset(Dataset):
         return bool(self.climatology_bounds_var_name)
 
     @property
-    def time_steps(self):
-        """List of timesteps, i.e., values of the time dimension, in this file"""
+    def time_var(self):
+        """The time variable (netCDF4.Variable) in this file"""
         axes = self.dim_axes_from_names()
         if 'T' in axes:
             time_axis = axes['T']
         else:
             raise ValueError("No axis is attributed with time information")
-
         t = self.variables[time_axis]
-
         assert hasattr(t, 'units') and hasattr(t, 'calendar')
+        return t
 
+    @property
+    def time_steps(self):
+        """List of timesteps, i.e., values of the time dimension, in this file"""
+        # This method appears to be very slow -- probably because of all the frequently unnecessary work it does
+        # computing the properties 'numeric' and 'datetime' it returns.
+        t = self.time_var
         return {
             'units': t.units,
             'calendar': t.calendar,
@@ -176,8 +181,11 @@ class CFDataset(Dataset):
     def time_range(self):
         """Minimum and maximum timesteps in the file"""
         # TODO: Must we really compute min and max of t? Can time variables really be non-monotonic?
-        t = self.time_steps['numeric']
-        return np.min(t), np.max(t)
+        # t = self.time_steps['numeric']
+        # return np.min(t), np.max(t)
+        # Let's do this instead of relying on the very slow computation of self.time_steps
+        t = self.time_var
+        return t[0], t[-1]
 
     # TODO: Is this property useful anywhere except in unique_id? If not, inline it.
     @property
@@ -193,14 +201,15 @@ class CFDataset(Dataset):
     @property
     def time_step_size(self):
         """Median of all intervals between successive timesteps in the file"""
-        time_steps = self.time_steps
-        match = re.match('(days|hours|minutes|seconds) since.*', time_steps['units'])
+        time_var = self.time_var
+        match = re.match('(days|hours|minutes|seconds) since.*', time_var.units)
         if match:
             scale = match.groups()[0]
         else:
             raise ValueError("cf_units param must be a string of the form '<time units> since <reference time>'")
-        med = np.median(np.diff(time_steps['numeric']))
-        return time_to_seconds(med, scale)
+        times = time_var[:]
+        median_difference = np.median(np.diff(times))
+        return time_to_seconds(median_difference, scale)
 
     @property
     def time_resolution(self):
@@ -336,8 +345,8 @@ class CFDataset(Dataset):
     def climo_periods(self):
         """List of those standard climatological periods (see util.standard_climo_periods) that are a subset of the
         date range in the file."""
+        time_var = self.time_var
         s_time, e_time = self.time_range
-        time_steps = self.time_steps
-        return dict([(k, v) for k, v in standard_climo_periods(time_steps['calendar']).items()
-                     if date2num(v[0], units=time_steps['units'], calendar=time_steps['calendar']) > s_time and
-                     date2num(v[1], units=time_steps['units'], calendar=time_steps['calendar']) < e_time])
+        return dict([(k, v) for k, v in standard_climo_periods(time_var.calendar).items()
+                     if date2num(v[0], units=time_var.units, calendar=time_var.calendar) > s_time and
+                     date2num(v[1], units=time_var.units, calendar=time_var.calendar) < e_time])
