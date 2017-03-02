@@ -366,8 +366,14 @@ class CFDataset(Dataset):
             .replace('+', '-')
 
     def climo_output_filename(self, t_start, t_end):
-        '''Generate an appropriate CMOR filename for a climatology output file. '''
+        """Generate an appropriate CMOR filename for a climatology output file.
+
+        :param t_start: (datetime.datetime) start date of output file
+        :param t_end: (datetime.datetime) end date of output file
+        :return:
+        """
         # TODO: Integrate with unique_id if possible
+
         # Establish the file-independent components of the output filename
         components = {
             'variable': '+'.join(self.dependent_varnames),

@@ -1,3 +1,4 @@
+from datetime import datetime
 from pytest import mark
 from netCDF4 import num2date
 from nchelpers.util import time_to_seconds
@@ -91,3 +92,8 @@ def test_is_unprocessed_model_output(tiny_gcm):
 def test_climo_periods(tiny_gcm):
     # TODO: Create a more interesting test for this property
     assert set(tiny_gcm.climo_periods.keys()) == set()
+
+
+def test_climo_output_filename(tiny_gcm):
+    assert tiny_gcm.climo_output_filename(datetime(2000, 1, 1), datetime(2010, 12, 31)) == \
+           'tasmax_Amon_BNU-ESM_historical_r1i1p1_20000101-20101231'
