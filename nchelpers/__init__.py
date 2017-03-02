@@ -3,7 +3,7 @@ import re
 
 from netCDF4 import Dataset, num2date, date2num
 import numpy as np
-from nchelpers.util import resolution_standard_name, time_to_seconds, s2d
+from nchelpers.util import resolution_standard_name, time_to_seconds, s2d, d2ss
 
 
 def standard_climo_periods(calendar='standard'):
@@ -325,25 +325,6 @@ class CFDataset(Dataset):
         return self.UnifiedMetadata(self)
 
     @property
-    def unique_id(self):
-        """A metadata-based unique id for this file"""
-        dim_axes = set(self.dim_axes_from_names().keys())
-        if dim_axes <= {'X', 'Y', 'Z', 'T'}:
-            axes = ''
-        else:
-            axes = "_dim" + ''.join(sorted(dim_axes))
-        return '{vars}_{tres}_{model}_{emissions}_{run}_{trange}{axes}'.format(
-            vars='-'.join(self.dependent_varnames),
-            tres=self.time_resolution,
-            model=self.metadata.model,
-            emissions=self.metadata.emissions,
-            run=self.metadata.run,
-            trange=self.time_range_formatted,
-            axes=axes,
-        )\
-            .replace('+', '-')
-
-    @property
     def is_unprocessed_model_output(self):
         """True iff the content of the file is unprocessed model output.
         This allows us to discern between raw amd downscaled model output, for example"""
@@ -363,3 +344,51 @@ class CFDataset(Dataset):
         return dict([(k, v) for k, v in standard_climo_periods(time_var.calendar).items()
                      if date2num(v[0], units=time_var.units, calendar=time_var.calendar) > s_time and
                      date2num(v[1], units=time_var.units, calendar=time_var.calendar) < e_time])
+
+    @property
+    def unique_id(self):
+        """A metadata-based unique id for this file"""
+        # TODO: Integrate with climo_output_filename if possible
+        dim_axes = set(self.dim_axes_from_names().keys())
+        if dim_axes <= {'X', 'Y', 'Z', 'T'}:
+            axes = ''
+        else:
+            axes = "_dim" + ''.join(sorted(dim_axes))
+        return '{vars}_{tres}_{model}_{emissions}_{run}_{trange}{axes}'.format(
+            vars='-'.join(self.dependent_varnames),
+            tres=self.time_resolution,
+            model=self.metadata.model,
+            emissions=self.metadata.emissions,
+            run=self.metadata.run,
+            trange=self.time_range_formatted,
+            axes=axes,
+        ) \
+            .replace('+', '-')
+
+    def climo_output_filename(self, t_start, t_end):
+        '''Generate an appropriate CMOR filename for a climatology output file. '''
+        # TODO: Integrate with unique_id if possible
+        # Establish the file-independent components of the output filename
+        components = {
+            'variable': '+'.join(self.dependent_varnames),
+            'mip_table': {'daily': 'Amon', 'monthly': 'aMon', 'yearly': 'Ayr'}.get(self.time_resolution, 'unknown'),
+            't_start': d2ss(t_start),
+            't_end': d2ss(t_end)
+        }
+
+        # Fill in the rest, depending on whether the file is unprocessed or processed model output
+        if self.is_unprocessed_model_output:
+            components.update(
+                model=self.metadata.model,
+                experiment=self.metadata.emissions,
+                ensemble_member=self.metadata.run
+            )
+        else:
+            components.update(
+                model=self.driving_model_id,
+                experiment='+'.join(re.split('\s*,\s*', self.driving_experiment_name)),
+                ensemble_member=self.driving_model_ensemble_member
+            )
+
+        return '{variable}_{mip_table}_{model}_{experiment}_{ensemble_member}_{t_start}-{t_end}'.format(**components)
+
