@@ -3,7 +3,20 @@ import re
 
 from netCDF4 import Dataset, num2date, date2num
 import numpy as np
-from nchelpers.util import resolution_standard_name, time_to_seconds, standard_climo_periods
+from nchelpers.util import resolution_standard_name, time_to_seconds, s2d
+
+
+def standard_climo_periods(calendar='standard'):
+    standard_climo_years = {
+        '6190': ['1961', '1990'],
+        '7100': ['1971', '2000'],
+        '8110': ['1981', '2010'],
+        '2020': ['2010', '2039'],
+        '2050': ['2040', '2069'],
+        '2080': ['2070', '2099']
+    }
+    day = '30' if calendar == '360_day' else '31'
+    return dict([(k, (s2d(year[0]+'-01-01'), s2d(year[1]+'-12-'+day))) for k, year in standard_climo_years.items()])
 
 
 class CFDataset(Dataset):
