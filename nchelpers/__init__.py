@@ -200,12 +200,8 @@ class CFDataset(Dataset):
     @property
     def time_range(self):
         """Minimum and maximum timesteps in the file"""
-        # TODO: Must we really compute min and max of t? Can time variables really be non-monotonic?
-        # t = self.time_steps['numeric']
-        # return np.min(t), np.max(t)
-        # Let's do this instead of relying on the very slow computation of self.time_steps
-        t = self.time_var
-        return t[0], t[-1]
+        t = self.time_var[:]
+        return np.min(t), np.max(t)  # yup, this is actually necessary
 
     # TODO: Is this property useful anywhere except in unique_id? If not, inline it.
     @property
