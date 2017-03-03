@@ -9,6 +9,14 @@ import numpy as np
 from nchelpers.util import resolution_standard_name, time_to_seconds, d2ss
 
 
+def cmor_filename(**components):
+    """Return a standard CMOR filename built from supplied components"""
+    template = '{variable}_{mip_table}_{model}_{experiment}_{ensemble_member}'
+    if components['time_range']:
+        template += '_{time_range}'
+    return template.format(**components)
+
+
 def standard_climo_periods(calendar='standard'):
     """Returns a dict containing the start and end dates, under the specified calendar, of standard climatological
     periods, keyed by abbreviations for those periods, e.g., '6190' for 1961-1990"""
@@ -248,7 +256,6 @@ class CFDataset(Dataset):
         How?
         - Create a property called metadata on CFDataset that is an instance of this class.
         """
-        # TODO: Make this a singleton
 
         def __init__(self, dataset):
             self.dataset = dataset
@@ -319,40 +326,41 @@ class CFDataset(Dataset):
                 }
 
     @property
-    def unique_id(self):
-        """A metadata-based unique id for this file"""
-        # TODO: Integrate with climo_output_filename if possible
-        dim_axes = set(self.dim_axes_from_names().keys())
-        if dim_axes <= {'X', 'Y', 'Z', 'T'}:
-            axes = ''
-        else:
-            axes = "_dim" + ''.join(sorted(dim_axes))
-        return '{vars}_{tres}_{model}_{emissions}_{run}_{trange}{axes}'.format(
-            vars='-'.join(self.dependent_varnames),
-            tres=self.time_resolution,
+    def cmor_filename(self):
+        """A CMOR standard filename for this file, based on its metadata contents"""
+        return cmor_filename(
+            variable='+'.join(self.dependent_varnames),
+            mip_table=self.time_resolution,
             model=self.metadata.model,
-            emissions=self.metadata.emissions,
-            run=self.metadata.run,
-            trange=self.time_range_formatted,
-            axes=axes,
-        ) \
-            .replace('+', '-')
+            experiment=self.metadata.emissions,
+            ensemble_member=self.metadata.run,
+            time_range=self.time_range_formatted,
+        )
+
+    @property
+    def unique_id(self):
+        """A unique id for this file, based on its CMOR filename"""
+        unique_id = self.cmor_filename
+
+        dim_axes = set(self.dim_axes_from_names().keys())
+        if not (dim_axes <= {'X', 'Y', 'Z', 'T'}):
+            unique_id += "_dim" + ''.join(sorted(dim_axes))
+
+        return unique_id.replace('+', '-')
 
     def climo_output_filename(self, t_start, t_end):
-        """Generate an appropriate CMOR filename for a climatology output file.
+        """Return an appropriate CMOR filename for a climatology output file based on this file as input.
 
         :param t_start: (datetime.datetime) start date of output file
         :param t_end: (datetime.datetime) end date of output file
-        :return:
+        :return: (str) filename
         """
-        # TODO: Integrate with unique_id if possible
 
         # Establish the file-independent components of the output filename
         components = {
             'variable': '+'.join(self.dependent_varnames),
             'mip_table': {'daily': 'Amon', 'monthly': 'aMon', 'yearly': 'Ayr'}.get(self.time_resolution, 'unknown'),
-            't_start': d2ss(t_start),
-            't_end': d2ss(t_end)
+            'time_range': '{}-{}'.format(d2ss(t_start), d2ss(t_end))
         }
 
         # Fill in the rest, depending on whether the file is unprocessed or processed model output
@@ -369,5 +377,5 @@ class CFDataset(Dataset):
                 ensemble_member=self.driving_model_ensemble_member
             )
 
-        return '{variable}_{mip_table}_{model}_{experiment}_{ensemble_member}_{t_start}-{t_end}'.format(**components)
+        return cmor_filename(**components)
 
