@@ -236,40 +236,6 @@ class CFDataset(Dataset):
         #    return 'other'
         return resolution_standard_name(self.time_step_size)
 
-    # TODO: Remove when all the juice has been squeezed
-    # def _get_file_metadata(nc, map_):
-    #     missing = []
-    #     required = map_.keys()
-    #     for key in required:
-    #         if not hasattr(nc, key):
-    #             missing.append(key)
-    #     if missing:
-    #         raise ValueError(required_nc_attributes_msg.format(required, nc.filepath(), missing))
-    #
-    #     return {
-    #         to_: getattr(nc, from_)
-    #         for from_, to_ in map_.items()
-    #         }
-    #
-    # def file_metadata(nc):
-    #     """Return important global attributes from this file"""
-    #     if self.project_id == 'CMIP5':
-    #         meta = _get_file_metadata(nc, global_to_res_map_cmip5)
-    #     else:
-    #         meta = _get_file_metadata(nc, global_to_res_map_cmip3)
-    #
-    #     # Which variable(s) does this file contain?
-    #     meta['var'] = '+'.join(get_important_varnames(nc))  # just do the computation where needed
-    #
-    #     # Compute time metadata from the time value
-    #     time = get_timeseries(nc)
-    #     meta['tres'] = get_time_resolution(time['numeric'], time['units'])  # == self.time_resolution
-    #     tmin, tmax = get_time_range(nc)
-    #     tmin, tmax = num2date([tmin, tmax], time['units'], time['calendar'])
-    #     meta['trange'] = format_time_range(tmin, tmax, meta['tres'])  # == self.time_range_formatted
-    #
-    #     return meta
-
     class UnifiedMetadata(object):
         """Presents a unified interface to certain global metadata attributes in a CFDataset object.
         Why?
