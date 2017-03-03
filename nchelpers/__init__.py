@@ -205,7 +205,6 @@ class CFDataset(Dataset):
         t = self.time_var[:]
         return np.min(t), np.max(t)  # yup, this is actually necessary
 
-    # TODO: Is this property useful anywhere except in unique_id? If not, inline it.
     @property
     def time_range_formatted(self):
         """Format the time range as string in YYYY[mm[dd]] format, min and max separated by a dash"""
@@ -213,7 +212,8 @@ class CFDataset(Dataset):
         if not format:
             raise ValueError("Cannot format a time range with resolution '{}' (only yearly, monthly or daily)"
                              .format(self.time_resolution))
-        t_min, t_max = num2date(self.time_range, self.time_steps['units'], self.time_steps['calendar'])
+        time_var = self.time_var
+        t_min, t_max = num2date(self.time_range, time_var.units, time_var.calendar)
         return '{}-{}'.format(t_min.strftime(format), t_max.strftime(format))
 
     @cached_property
