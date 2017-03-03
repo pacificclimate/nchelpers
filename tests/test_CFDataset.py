@@ -1,7 +1,16 @@
 from datetime import datetime
 from pytest import mark
 from netCDF4 import num2date
+from nchelpers import standard_climo_periods
 from nchelpers.util import time_to_seconds
+
+
+@mark.parametrize('calendar, key, start_date, end_date', [
+    ('standard', '6190', datetime(1961, 1, 1), datetime(1990, 12, 31)),
+    ('360_day', '2020', datetime(2010, 1, 1), datetime(2039, 12, 30)),
+])
+def test_standard_climo_periods(calendar, key, start_date, end_date):
+    assert standard_climo_periods(calendar)[key] == (start_date, end_date)
 
 
 def test_first_MiB_md5sum(tiny_gcm):

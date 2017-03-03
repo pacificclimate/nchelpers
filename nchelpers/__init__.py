@@ -1,27 +1,31 @@
+from datetime import datetime
 import hashlib
 import re
 
 from netCDF4 import Dataset, num2date, date2num
 import numpy as np
-from nchelpers.util import resolution_standard_name, time_to_seconds, s2d, d2ss
+from nchelpers.util import resolution_standard_name, time_to_seconds, d2ss
 
 
 def standard_climo_periods(calendar='standard'):
+    """Returns a dict containing the start and end dates, under the specified calendar, of standard climatological
+    periods, keyed by abbreviations for those periods, e.g., '6190' for 1961-1990"""
     standard_climo_years = {
-        '6190': ['1961', '1990'],
-        '7100': ['1971', '2000'],
-        '8110': ['1981', '2010'],
-        '2020': ['2010', '2039'],
-        '2050': ['2040', '2069'],
-        '2080': ['2070', '2099']
+        '6190': (1961, 1990),
+        '7100': (1971, 2000),
+        '8110': (1981, 2010),
+        '2020': (2010, 2039),
+        '2050': (2040, 2069),
+        '2080': (2070, 2099)
     }
-    day = '30' if calendar == '360_day' else '31'
-    return dict([(k, (s2d(year[0]+'-01-01'), s2d(year[1]+'-12-'+day))) for k, year in standard_climo_years.items()])
+    end_day = 30 if calendar == '360_day' else 31
+    return {k: (datetime(start_year, 1, 1), datetime(end_year, 12, end_day))
+            for k, (start_year, end_year) in standard_climo_years.items()}
 
 
 class CFDataset(Dataset):
     """Represents a CF (climate and forecast) dataset stored in a NetCDF file.
-    Methods on this class expose metadata that is expected to be found in such files,
+    Properties and methods on this class expose metadata that is expected to be found in such files,
     and values computed from that metadata.
     
     Some of this class replaces the functionality of helper functions defined in pacificclimate/modelmeta. The
@@ -56,7 +60,7 @@ class CFDataset(Dataset):
         return m.digest()
 
     @property
-    def important_varnames(self):
+    def dependent_varnames(self):
         """A list of the primary (dependent) variables in this file.
 
         Many variables in a NetCDF file describe the *structure* of the data and aren't necessarily the
@@ -75,8 +79,6 @@ class CFDataset(Dataset):
             if hasattr(variable, 'coordinates'):
                 non_dependent_variables.update(variable.coordinates.split())
         return [v for v in variables - non_dependent_variables]
-    # Define an alias with a more explantory name
-    dependent_varnames = important_varnames
 
     def dim_names(self, var_name=None):
         """Return names of dimensions of a specified variable (or all dimensions) in this file
@@ -150,24 +152,24 @@ class CFDataset(Dataset):
 
     @property
     def climatology_bounds_var_name(self):
+        """Return the name of the climatological time bounds variable, None if no such variable exists"""
         axes = self.dim_axes()
         if 'T' in axes:
             time_axis = axes['T']
         else:
             return None
 
-        # TODO: Do we really mean 'climatology' in self.variables[time_axis].ncattrs()? If so, use that. This looks
-        # imprecise and hard to understand
-        if 'climatology' in self.variables[time_axis]:
+        try:
             return self.variables[time_axis].climatology
-        else:
+        except AttributeError:
             return None
 
     @property
     def is_multi_year_mean(self):
-        """True if the metadata indicates that the data consists of a multi-year mean"""
-        # TODO: Is it really true that every data file that consists of a multi-year mean actually (should) contain a
-        # time dimension with attribute 'climatology'? Or is there a better condition, perhaps based on cell_method?
+        """True if the metadata indicates that the data consists of a multi-year mean,
+        i.e., if the file contains a climatological time bounds variable.
+        See http://cfconventions.org/Data/cf-conventions/cf-conventions-1.6/build/cf-conventions.html#climatological-statistics,
+        section 7.4"""
         return bool(self.climatology_bounds_var_name)
 
     @property
@@ -342,13 +344,15 @@ class CFDataset(Dataset):
 
     @property
     def climo_periods(self):
-        """List of those standard climatological periods (see util.standard_climo_periods) that are a subset of the
-        date range in the file."""
+        """List of the standard climatological periods (see function standard_climo_periods)
+        that are a subset of the date range in the file."""
         time_var = self.time_var
         s_time, e_time = self.time_range
-        return dict([(k, v) for k, v in standard_climo_periods(time_var.calendar).items()
-                     if date2num(v[0], units=time_var.units, calendar=time_var.calendar) > s_time and
-                     date2num(v[1], units=time_var.units, calendar=time_var.calendar) < e_time])
+        return {k: (climo_start_date, climo_end_date)
+                for k, (climo_start_date, climo_end_date) in standard_climo_periods(time_var.calendar).items()
+                if s_time < date2num(climo_start_date, units=time_var.units, calendar=time_var.calendar) and
+                date2num(climo_end_date, units=time_var.units, calendar=time_var.calendar) < e_time
+                }
 
     @property
     def unique_id(self):
