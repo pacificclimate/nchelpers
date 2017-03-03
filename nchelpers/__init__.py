@@ -2,6 +2,8 @@ from datetime import datetime
 import hashlib
 import re
 
+from cached_property import cached_property
+
 from netCDF4 import Dataset, num2date, date2num
 import numpy as np
 from nchelpers.util import resolution_standard_name, time_to_seconds, d2ss
@@ -184,7 +186,7 @@ class CFDataset(Dataset):
         assert hasattr(t, 'units') and hasattr(t, 'calendar')
         return t
 
-    @property
+    @cached_property
     def time_steps(self):
         """List of timesteps, i.e., values of the time dimension, in this file"""
         # This method appears to be very slow -- probably because of all the frequently unnecessary work it does
@@ -197,7 +199,7 @@ class CFDataset(Dataset):
             'datetime': num2date(t[:], t.units, t.calendar)
         }
 
-    @property
+    @cached_property
     def time_range(self):
         """Minimum and maximum timesteps in the file"""
         t = self.time_var[:]
@@ -214,7 +216,7 @@ class CFDataset(Dataset):
         t_min, t_max = num2date(self.time_range, self.time_steps['units'], self.time_steps['calendar'])
         return '{}-{}'.format(t_min.strftime(format), t_max.strftime(format))
 
-    @property
+    @cached_property
     def time_step_size(self):
         """Median of all intervals between successive timesteps in the file"""
         time_var = self.time_var
