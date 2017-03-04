@@ -6,7 +6,7 @@ from cached_property import cached_property
 
 from netCDF4 import Dataset, num2date, date2num
 import numpy as np
-from nchelpers.util import resolution_standard_name, time_to_seconds, d2ss
+from nchelpers.date_utils import resolution_standard_name, time_to_seconds, d2ss
 
 
 def cmor_filename(**components):
