@@ -14,7 +14,7 @@ setup(
     author="Rod Glover",
     author_email="rglover@uvic.ca",
     zip_safe=True,
-    install_requires = ['netCDF4'],
+    install_requires = ['netCDF4', 'cached-property'],
     package_data = {'nchelpers': ['data/tiny_gcm.nc']},
     include_package_data = True,
     classifiers=['Development Status :: 4 - Beta',
