@@ -2,7 +2,7 @@ from datetime import datetime
 from pytest import mark
 from netCDF4 import num2date
 from nchelpers import standard_climo_periods
-from nchelpers.util import time_to_seconds
+from nchelpers.date_utils import time_to_seconds
 
 
 @mark.parametrize('calendar, key, start_date, end_date', [

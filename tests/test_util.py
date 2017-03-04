@@ -1,5 +1,5 @@
 from pytest import mark
-from nchelpers.util import resolution_standard_name
+from nchelpers.date_utils import resolution_standard_name
 
 
 @mark.parametrize('arg, result', [
