@@ -53,6 +53,16 @@ def test_is_multi_year_mean(tiny_gcm):
     assert tiny_gcm.is_multi_year_mean == False
 
 
+def test_time_var(tiny_gcm):
+    assert tiny_gcm.time_var.name == 'time'
+    assert tiny_gcm.time_var.standard_name == 'time'
+
+
+def test_time_var_values(tiny_gcm):
+    assert tiny_gcm.time_var_values[0] == 5475.5
+    assert tiny_gcm.time_var_values[-1] == 9125.5
+
+
 def test_time_steps(tiny_gcm):
     time = tiny_gcm.variables['time']
     time_steps = tiny_gcm.time_steps

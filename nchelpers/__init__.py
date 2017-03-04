@@ -195,22 +195,27 @@ class CFDataset(Dataset):
         return t
 
     @cached_property
+    def time_var_values(self):
+        return self.time_var[:]
+
+    @cached_property
     def time_steps(self):
         """List of timesteps, i.e., values of the time dimension, in this file"""
         # This method appears to be very slow -- probably because of all the frequently unnecessary work it does
         # computing the properties 'numeric' and 'datetime' it returns.
         t = self.time_var
+        values = self.time_var_values
         return {
             'units': t.units,
             'calendar': t.calendar,
-            'numeric': t[:],
-            'datetime': num2date(t[:], t.units, t.calendar)
+            'numeric': values,
+            'datetime': num2date(values, t.units, t.calendar)
         }
 
     @cached_property
     def time_range(self):
         """Minimum and maximum timesteps in the file"""
-        t = self.time_var[:]
+        t = self.time_var_values
         return np.min(t), np.max(t)  # yup, this is actually necessary
 
     @property
@@ -233,7 +238,7 @@ class CFDataset(Dataset):
             scale = match.groups()[0]
         else:
             raise ValueError("cf_units param must be a string of the form '<time units> since <reference time>'")
-        times = time_var[:]
+        times = self.time_var_values
         median_difference = np.median(np.diff(times))
         return time_to_seconds(median_difference, scale)
 
