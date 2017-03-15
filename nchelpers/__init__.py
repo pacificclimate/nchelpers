@@ -8,13 +8,29 @@ from netCDF4 import Dataset, num2date, date2num
 import numpy as np
 from nchelpers.date_utils import resolution_standard_name, time_to_seconds, d2ss
 
+# Map of nchelpers time resolution strings to CMIP5 standard MIP table names.
+# TODO: Get some sanity. See below.
+# This dict supports the generation of CMOR standard filenames, defined in sec 3.3 of the CMIP5 Data Reference Syntax
+# (DRS) (http://cmip-pcmdi.llnl.gov/cmip5/docs/cmip5_data_reference_syntax.pdf).
+# CMOR filenames specify a <MIP table> component. MIP tables are defined in sec 2.3 of the DRS, referring to the
+# CMIP5 standard output spreadsheet (http://cmip-pcmdi.llnl.gov/cmip5/docs/standard_output.xls). There are not many
+# relevant MIP tables, certainly fewer than named time resolutions.
+# TODO: Note that table_id is also relevant for this information ...
+standard_tres_to_mip_table = {'daily': 'day', 'monthly': 'mon', 'yearly': 'yr'}
 
-def cmor_filename(**components):
-    """Return a standard CMOR filename built from supplied components"""
-    template = '{variable}_{mip_table}_{model}_{experiment}_{ensemble_member}'
-    if components['time_range']:
-        template += '_{time_range}'
-    return template.format(**components)
+
+def cmor_type_filename(extension='', **component_values):
+    """Return a CMOR standard based filename built from supplied component values.
+    Produces a CMOR standard filename if downscaling_method is not defined and all required others are.
+    Omits any components not in list of component names. Omits any component with a None value.
+    Warning: This thing is no smarter than it has to be. Does not enforce required components.
+    """
+    # Include these filename components in this order ...
+    component_names = 'variable mip_table downscaling_method model experiment ensemble_member time_range geo_info'\
+        .split()
+    # ... if they are defined in component_values
+    return '_'.join(component_values[cname] for cname in component_names if component_values.get(cname, None) != None) \
+           + extension
 
 
 def standard_climo_periods(calendar='standard'):
@@ -55,7 +71,7 @@ class CFDataset(Dataset):
     get_timeseries -> time_steps
     get_time_range -> time_range
     get_first_MiB_md5sum -> first_MiB_md5sum
-    get_important_varnames -> important_varnames, dependent_varnames
+    get_important_varnames -> dependent_varnames
     """
 
     def __init__(self, *args, **kwargs):
@@ -331,56 +347,84 @@ class CFDataset(Dataset):
                 }
 
     @property
+    def ensemble_member(self):
+        """CMIP5 standard ensemble member code for this file"""
+        template = 'r{r}i{i}p{p}'
+        if self.is_unprocessed_model_output:
+            return template.format(r=self.realization,
+                                   i=self.initialization_method,
+                                   p=self.physics_version)
+        else:
+            return template.format(r=self.driving_realization,
+                                   i=self.driving_initialization_method,
+                                   p=self.driving_physics_version)
+
+    def _cmor_filename_components(self, tres_to_mip_table=standard_tres_to_mip_table, **override):
+        """Return a dict containing CMOR filename components built from this file's metadata.
+
+        :param tres_to_mip_table: (dict) a dict mapping time resolution (as computed by the property
+            self.time_resolution) to a valid MIP table name.
+        :param override: keyword arguments that can override or extend the base components computed here.
+        :return: (dict) as above
+        """
+
+        # File content-independent components
+        components = {
+            'variable': '+'.join(self.dependent_varnames),
+            'mip_table': tres_to_mip_table.get(self.time_resolution, 'unknown'),
+            'ensemble_member': self.ensemble_member,
+            'time_range': self.time_range_formatted,
+        }
+
+        # Components depending on whether the file is unprocessed or processed model output
+        # TODO: Should metadata be smarter, and consult self.is_unprocessed_model_output as well?
+        if self.is_unprocessed_model_output:
+            components.update(
+                model=self.metadata.model,
+                experiment=self.metadata.emissions,
+            )
+        else:
+            components.update(
+                model=self.driving_model_id,
+                experiment='+'.join(re.split('\s*,\s*', self.driving_experiment_id)),
+                downscaling_method=self.downscaling_method_id,
+                geo_info=getattr(self, 'domain', None)
+            )
+
+        # Override with supplied args
+        components.update(**override)
+
+        return components
+
+
+    @property
     def cmor_filename(self):
         """A CMOR standard filename for this file, based on its metadata contents"""
-        return cmor_filename(
-            variable='+'.join(self.dependent_varnames),
-            mip_table=self.time_resolution,
-            model=self.metadata.model,
-            experiment=self.metadata.emissions,
-            ensemble_member=self.metadata.run,
-            time_range=self.time_range_formatted,
-        )
+        return cmor_type_filename(extension='.nc', **self._cmor_filename_components())
 
     @property
     def unique_id(self):
         """A unique id for this file, based on its CMOR filename"""
-        unique_id = self.cmor_filename
+        unique_id = cmor_type_filename(**self._cmor_filename_components())
 
         dim_axes = set(self.dim_axes_from_names().keys())
         if not (dim_axes <= {'X', 'Y', 'Z', 'T'}):
             unique_id += "_dim" + ''.join(sorted(dim_axes))
 
-        return unique_id.replace('+', '-')
+        return unique_id.replace('+', '-')  # In original code, but why?
 
-    def climo_output_filename(self, t_start, t_end):
-        """Return an appropriate CMOR filename for a climatology output file based on this file as input.
+    def climo_output_filename(self, t_start, t_end, variable=None):
+        """Return an appropriate CMOR based filename for a climatology output file based on this file as input.
 
         :param t_start: (datetime.datetime) start date of output file
         :param t_end: (datetime.datetime) end date of output file
+        :param variable: (str) name of variable to use in filename; None for all dependent variable names concatenated
         :return: (str) filename
         """
-
-        # Establish the file-independent components of the output filename
-        components = {
-            'variable': '+'.join(self.dependent_varnames),
-            'mip_table': {'daily': 'Amon', 'monthly': 'aMon', 'yearly': 'Ayr'}.get(self.time_resolution, 'unknown'),
-            'time_range': '{}-{}'.format(d2ss(t_start), d2ss(t_end))
-        }
-
-        # Fill in the rest, depending on whether the file is unprocessed or processed model output
-        if self.is_unprocessed_model_output:
-            components.update(
-                model=self.metadata.model,
-                experiment=self.metadata.emissions,
-                ensemble_member=self.metadata.run
-            )
-        else:
-            components.update(
-                model=self.driving_model_id,
-                experiment='+'.join(re.split('\s*,\s*', self.driving_experiment_name)),
-                ensemble_member=self.driving_model_ensemble_member
-            )
-
-        return cmor_filename(**components)
-
+        return cmor_type_filename(extension='.nc', **self._cmor_filename_components(
+            # Note: Only 'Amon' is a standard MIP table name; the other 2 are nonstandard but formed on the
+            # same pattern for other time resolutions.
+            variable=variable or '+'.join(self.dependent_varnames),
+            tres_to_mip_table={'daily': 'Amon', 'monthly': 'Aseas', 'yearly': 'Ayr'},
+            time_range='{}-{}'.format(d2ss(t_start), d2ss(t_end))
+        ))
