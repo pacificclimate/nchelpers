@@ -8,15 +8,23 @@ from netCDF4 import Dataset, num2date, date2num
 import numpy as np
 from nchelpers.date_utils import resolution_standard_name, time_to_seconds, d2ss
 
-# Map of nchelpers time resolution strings to CMIP5 standard MIP table names.
-# TODO: Get some sanity. See below.
-# This dict supports the generation of CMOR standard filenames, defined in sec 3.3 of the CMIP5 Data Reference Syntax
-# (DRS) (http://cmip-pcmdi.llnl.gov/cmip5/docs/cmip5_data_reference_syntax.pdf).
-# CMOR filenames specify a <MIP table> component. MIP tables are defined in sec 2.3 of the DRS, referring to the
-# CMIP5 standard output spreadsheet (http://cmip-pcmdi.llnl.gov/cmip5/docs/standard_output.xls). There are not many
-# relevant MIP tables, certainly fewer than named time resolutions.
-# TODO: Note that table_id is also relevant for this information ...
-standard_tres_to_mip_table = {'daily': 'day', 'monthly': 'mon', 'yearly': 'yr'}
+# Map of nchelpers time resolution strings to MIP table names, standard where possible.
+# For an explanation of the content of this map, see the discussion in section titled "MIP table / table_id" in
+# https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data
+standard_tres_to_mip_table = {
+    '1-minute': 'subhr', # frequency std
+    '2-minute': 'subhr', # frequency std
+    '5-minute': 'subhr', # frequency std
+    '15-minute': 'subhr', # frequency std
+    '30-minute': 'subhr', # frequency std
+    '1-hourly': '1hr', # custom: neither a MIP table nor a frequency standard term
+    '3-hourly': '3hr', # frequency std
+    '6-hourly': '6hr', # frequency std
+    '12-hourly': '12hr', # custom: neither a MIP table nor a frequency standard term
+    'daily': 'day', # MIP table and frequency standard
+    'monthly': 'mon', # frequency std
+    'yearly': 'yr', # frequency std
+}
 
 
 def cmor_type_filename(extension='', **component_values):
@@ -371,6 +379,11 @@ class CFDataset(Dataset):
         # File content-independent components
         components = {
             'variable': '+'.join(self.dependent_varnames),
+            # Regarding how the 'mip_table' component is defined here, see the discussion in section titled
+            # "MIP table / table_id" in
+            # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data
+            # Specifically, we do not consult the value of the attribute table_id because it is too limited for our
+            # needs. Instead we map the file's time resolution to a value.
             'mip_table': tres_to_mip_table.get(self.time_resolution, 'unknown'),
             'ensemble_member': self.ensemble_member,
             'time_range': self.time_range_formatted,
@@ -422,9 +435,11 @@ class CFDataset(Dataset):
         :return: (str) filename
         """
         return cmor_type_filename(extension='.nc', **self._cmor_filename_components(
-            # Note: Only 'Amon' is a standard MIP table name; the other 2 are nonstandard but formed on the
-            # same pattern for other time resolutions.
             variable=variable or '+'.join(self.dependent_varnames),
+            # For an explanation of the content of tres_to_mip_table, see the discussion in section titled
+            # "MIP table / table_id" in
+            # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data
+            # Note that because these are climatological means, there are no sub-monthly resolutions.
             tres_to_mip_table={'daily': 'Amon', 'monthly': 'Aseas', 'yearly': 'Ayr'},
             time_range='{}-{}'.format(d2ss(t_start), d2ss(t_end))
         ))
