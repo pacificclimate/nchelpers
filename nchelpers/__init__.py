@@ -34,8 +34,17 @@ def cmor_type_filename(extension='', **component_values):
     Warning: This thing is no smarter than it has to be. Does not enforce required components.
     """
     # Include these filename components in this order ...
-    component_names = 'variable mip_table downscaling_method model experiment ensemble_member time_range geo_info'\
-        .split()
+    component_names = '''
+        variable
+        mip_table
+        downscaling_method
+        hydromodel_method
+        model
+        experiment
+        ensemble_member
+        time_range
+        geo_info
+    '''.split()
     # ... if they are defined in component_values
     return '_'.join(component_values[cname] for cname in component_names if component_values.get(cname, None) != None) \
            + extension
@@ -55,6 +64,16 @@ def standard_climo_periods(calendar='standard'):
     end_day = 30 if calendar == '360_day' else 31
     return {k: (datetime(start_year, 1, 1), datetime(end_year, 12, end_day))
             for k, (start_year, end_year) in standard_climo_years.items()}
+
+
+def _join_comma_separated_list(s, sep='+'):
+    """Return a string constructed by joining with `sep` the substrings of `s` delimited by commas and arbitrary spaces.
+
+    :param s: (str) string to split on commas and join with sep
+    :param sep: (str) separator string for join
+    :return: see above
+    """
+    return sep.join(re.split('\s*,\s*', s))
 
 
 class CFDataset(Dataset):
@@ -332,15 +351,30 @@ class CFDataset(Dataset):
         return self.UnifiedMetadata(self)
 
     @property
-    def is_unprocessed_model_output(self):
-        """True iff the content of the file is unprocessed model output.
-        This allows us to discern between raw amd downscaled model output, for example"""
-        try:
-            self.metadata.model
-        except AttributeError:
-            return False
-        else:
-            return True
+    def is_unprocessed_gcm_output(self):
+        """True iff the content of the file is unprocessed GCM output."""
+        return self.product == 'output'
+
+    @property
+    def is_downscaling_output(self):
+        """True iff the content of the file is downscaling output."""
+        return self.product == 'downscaling output'
+
+    @property
+    def is_hydromodel_output(self):
+        """True iff the content of the file is hydrological model output of any kind."""
+        return self.product == 'hydrological model output'
+
+    @property
+    def is_hydromodel_dgcm_output(self):
+        """True iff the content of the file is output of a hydrological model driven by downscaled GCM data."""
+        return self.is_hydromodel_output and hasattr(self, 'downscaling_method_id') and hasattr(self, 'driving_model_id')
+
+    @property
+    def is_hydromodel_iobs_output(self):
+        """True iff the content of the file is output of a hydrological model driven by interpolated observational data."""
+        raise NotImplementedError
+        return self.is_hydromodel_output # TODO: additional conditions
 
     @property
     def climo_periods(self):
@@ -358,7 +392,7 @@ class CFDataset(Dataset):
     def ensemble_member(self):
         """CMIP5 standard ensemble member code for this file"""
         template = 'r{r}i{i}p{p}'
-        if self.is_unprocessed_model_output:
+        if self.is_unprocessed_gcm_output:
             return template.format(r=self.realization,
                                    i=self.initialization_method,
                                    p=self.physics_version)
@@ -378,10 +412,10 @@ class CFDataset(Dataset):
 
         # File content-independent components
         components = {
-            'variable': '+'.join(self.dependent_varnames),
+            'variable': '+'.join(sorted(self.dependent_varnames)),
             # Regarding how the 'mip_table' component is defined here, see the discussion in section titled
             # "MIP table / table_id" in
-            # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data
+            # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data
             # Specifically, we do not consult the value of the attribute table_id because it is too limited for our
             # needs. Instead we map the file's time resolution to a value.
             'mip_table': tres_to_mip_table.get(self.time_resolution, 'unknown'),
@@ -389,18 +423,32 @@ class CFDataset(Dataset):
             'time_range': self.time_range_formatted,
         }
 
-        # Components depending on whether the file is unprocessed or processed model output
-        # TODO: Should metadata be smarter, and consult self.is_unprocessed_model_output as well?
-        if self.is_unprocessed_model_output:
+        # Components depending on the type of file
+        # TODO: Should metadata be smarter, and consult self.is_*_output as well?
+        if self.is_unprocessed_gcm_output:
             components.update(
                 model=self.metadata.model,
                 experiment=self.metadata.emissions,
             )
-        else:
+        elif self.is_downscaling_output:
             components.update(
-                model=self.driving_model_id,
-                experiment='+'.join(re.split('\s*,\s*', self.driving_experiment_id)),
                 downscaling_method=self.downscaling_method_id,
+                model=self.driving_model_id,
+                experiment=_join_comma_separated_list(self.driving_experiment_id),
+                geo_info=getattr(self, 'domain', None)
+            )
+        elif self.is_hydromodel_dgcm_output:
+            components.update(
+                hydromodel_method=_join_comma_separated_list(self.hydromodel_method_id),
+                model=self.driving_model_id,
+                experiment=_join_comma_separated_list(self.driving_experiment_id),
+                geo_info=getattr(self, 'domain', None)
+            )
+        elif self.is_hydromodel_iobs_output:
+            raise NotImplementedError
+            components.update(
+                hydromodel_method=_join_comma_separated_list(self.hydromodel_method_id),
+                # TODO: props for observational data info
                 geo_info=getattr(self, 'domain', None)
             )
 
@@ -435,7 +483,7 @@ class CFDataset(Dataset):
         :return: (str) filename
         """
         return cmor_type_filename(extension='.nc', **self._cmor_filename_components(
-            variable=variable or '+'.join(self.dependent_varnames),
+            variable=variable or '+'.join(sorted(self.dependent_varnames)),
             # For an explanation of the content of tres_to_mip_table, see the discussion in section titled
             # "MIP table / table_id" in
             # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data
