@@ -10,7 +10,7 @@ from nchelpers.date_utils import resolution_standard_name, time_to_seconds, d2ss
 
 # Map of nchelpers time resolution strings to MIP table names, standard where possible.
 # For an explanation of the content of this map, see the discussion in section titled "MIP table / table_id" in
-# https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data
+# https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data
 standard_tres_to_mip_table = {
     '1-minute': 'subhr', # frequency std
     '2-minute': 'subhr', # frequency std
@@ -28,10 +28,14 @@ standard_tres_to_mip_table = {
 
 
 def cmor_type_filename(extension='', **component_values):
-    """Return a CMOR standard based filename built from supplied component values.
-    Produces a CMOR standard filename if downscaling_method is not defined and all required others are.
+    """Return filename built from supplied component values, following the a CMOR-based filename standards in
+    https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data    .
+
+    Produces a CMOR standard filename if all and only required CMOR filename components are defined.
     Omits any components not in list of component names. Omits any component with a None value.
-    Warning: This thing is no smarter than it has to be. Does not enforce required components.
+
+    Warning: This thing is no smarter than it has to be. Does not enforce required components or any rules other than
+    order.
     """
     # Include these filename components in this order ...
     component_names = '''
@@ -406,8 +410,9 @@ class CFDataset(Dataset):
                                    i=self.driving_initialization_method,
                                    p=self.driving_physics_version)
 
-    def _cmor_filename_components(self, tres_to_mip_table=standard_tres_to_mip_table, **override):
-        """Return a dict containing CMOR filename components built from this file's metadata.
+    def _cmor_type_filename_components(self, tres_to_mip_table=standard_tres_to_mip_table, **override):
+        """Return a dict containing appropriate arguments to function cmor_type_filename (q.v.),
+        with content built from this file's metadata.
 
         :param tres_to_mip_table: (dict) a dict mapping time resolution (as computed by the property
             self.time_resolution) to a valid MIP table name.
@@ -418,18 +423,21 @@ class CFDataset(Dataset):
         # File content-independent components
         components = {
             'variable': '+'.join(sorted(self.dependent_varnames)),
-            # Regarding how the 'mip_table' component is defined here, see the discussion in section titled
-            # "MIP table / table_id" in
-            # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data
-            # Specifically, we do not consult the value of the attribute table_id because it is too limited for our
-            # needs. Instead we map the file's time resolution to a value.
-            'mip_table': tres_to_mip_table and tres_to_mip_table.get(self.time_resolution, None),
             'ensemble_member': self.ensemble_member,
             'time_range': self.time_range_formatted,
         }
 
         # Components depending on the type of file
-        # TODO: Should metadata be smarter, and consult self.is_*_output as well?
+        if self.is_multi_year_mean:
+            components.update(frequency=self.frequency)
+        else:
+            # Regarding how the 'mip_table' component is defined here, see the discussion in section titled
+            # "MIP table / table_id" in
+            # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data
+            # Specifically, we do not consult the value of the attribute table_id because it is too limited for our
+            # needs. Instead we map the file's time resolution to a value.
+            components.update(mip_table = tres_to_mip_table and tres_to_mip_table.get(self.time_resolution, None))
+
         if self.is_unprocessed_gcm_output:
             components.update(
                 model=self.metadata.model,
@@ -466,12 +474,12 @@ class CFDataset(Dataset):
     @property
     def cmor_filename(self):
         """A CMOR standard filename for this file, based on its metadata contents"""
-        return cmor_type_filename(extension='.nc', **self._cmor_filename_components())
+        return cmor_type_filename(extension='.nc', **self._cmor_type_filename_components())
 
     @property
     def unique_id(self):
         """A unique id for this file, based on its CMOR filename"""
-        unique_id = cmor_type_filename(**self._cmor_filename_components())
+        unique_id = cmor_type_filename(**self._cmor_type_filename_components())
 
         dim_axes = set(self.dim_axes_from_names().keys())
         if not (dim_axes <= {'X', 'Y', 'Z', 'T'}):
@@ -487,7 +495,7 @@ class CFDataset(Dataset):
         :param variable: (str) name of variable to use in filename; None for all dependent variable names concatenated
         :return: (str) filename
         """
-        return cmor_type_filename(extension='.nc', **self._cmor_filename_components(
+        return cmor_type_filename(extension='.nc', **self._cmor_type_filename_components(
             variable=variable or '+'.join(sorted(self.dependent_varnames)),
             # See section Generating Filenames in
             # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data
