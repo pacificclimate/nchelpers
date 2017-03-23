@@ -78,7 +78,7 @@ def _join_comma_separated_list(s, sep='+'):
     :param sep: (str) separator string for join
     :return: see above
     """
-    return sep.join(re.split('\s*,\s*', s))
+    return re.sub(r'\s*,\s*', sep, s)
 
 
 class CFDataset(Dataset):
