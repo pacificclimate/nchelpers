@@ -498,13 +498,12 @@ class CFDataset(Dataset):
         return cmor_type_filename(extension='.nc', **self._cmor_type_filename_components(
             variable=variable or '+'.join(sorted(self.dependent_varnames)),
             # See section Generating Filenames in
-            # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data
+            # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data
             frequency={
                 'daily': 'msaClim',
                 'monthly': 'saClim',
                 'yearly': 'aClim'
             }.get(self.time_resolution, None),
             tres_to_mip_table=None,
-            # tres_to_mip_table={'daily': 'Amon', 'monthly': 'Aseas', 'yearly': 'Ayr'},
             time_range='{}-{}'.format(d2ss(t_start), d2ss(t_end))
         ))
