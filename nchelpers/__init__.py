@@ -37,6 +37,7 @@ def cmor_type_filename(extension='', **component_values):
     component_names = '''
         variable
         mip_table
+        frequency
         downscaling_method
         hydromodel_method
         model
@@ -262,14 +263,18 @@ class CFDataset(Dataset):
         return np.min(t), np.max(t)  # yup, this is actually necessary
 
     @property
+    def time_range_as_dates(self):
+        time_var = self.time_var
+        return num2date(self.time_range, time_var.units, time_var.calendar)
+
+    @property
     def time_range_formatted(self):
         """Format the time range as string in YYYY[mm[dd]] format, min and max separated by a dash"""
         format = {'yearly': '%Y', 'monthly': '%Y%m', 'daily': '%Y%m%d'}.get(self.time_resolution, None)
         if not format:
             raise ValueError("Cannot format a time range with resolution '{}' (only yearly, monthly or daily)"
                              .format(self.time_resolution))
-        time_var = self.time_var
-        t_min, t_max = num2date(self.time_range, time_var.units, time_var.calendar)
+        t_min, t_max = self.time_range_as_dates
         return '{}-{}'.format(t_min.strftime(format), t_max.strftime(format))
 
     @cached_property
@@ -418,7 +423,7 @@ class CFDataset(Dataset):
             # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data
             # Specifically, we do not consult the value of the attribute table_id because it is too limited for our
             # needs. Instead we map the file's time resolution to a value.
-            'mip_table': tres_to_mip_table.get(self.time_resolution, 'unknown'),
+            'mip_table': tres_to_mip_table and tres_to_mip_table.get(self.time_resolution, None),
             'ensemble_member': self.ensemble_member,
             'time_range': self.time_range_formatted,
         }
@@ -484,10 +489,14 @@ class CFDataset(Dataset):
         """
         return cmor_type_filename(extension='.nc', **self._cmor_filename_components(
             variable=variable or '+'.join(sorted(self.dependent_varnames)),
-            # For an explanation of the content of tres_to_mip_table, see the discussion in section titled
-            # "MIP table / table_id" in
+            # See section Generating Filenames in
             # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data
-            # Note that because these are climatological means, there are no sub-monthly resolutions.
-            tres_to_mip_table={'daily': 'Amon', 'monthly': 'Aseas', 'yearly': 'Ayr'},
+            frequency={
+                'daily': 'msaClim',
+                'monthly': 'saClim',
+                'yearly': 'aClim'
+            }.get(self.time_resolution, None),
+            tres_to_mip_table=None,
+            # tres_to_mip_table={'daily': 'Amon', 'monthly': 'Aseas', 'yearly': 'Ayr'},
             time_range='{}-{}'.format(d2ss(t_start), d2ss(t_end))
         ))

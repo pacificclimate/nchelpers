@@ -189,10 +189,10 @@ def test_climo_periods(tiny_dataset, expected):
 
 
 @mark.parametrize('tiny_dataset, pattern, all_vars', [
-    ('gcm', '{}_Amon_BNU-ESM_historical_r1i1p1_20000101-20101231.nc', 'tasmax'),
-    ('downscaled', '{}_Amon_BCCAQ2_ACCESS1-0_historical+rcp45_r1i1p1_20000101-20101231.nc', 'tasmax'),
+    ('gcm', '{}_msaClim_BNU-ESM_historical_r1i1p1_20000101-20101231.nc', 'tasmax'),
+    ('downscaled', '{}_msaClim_BCCAQ2_ACCESS1-0_historical+rcp45_r1i1p1_20000101-20101231.nc', 'tasmax'),
     ('hydromodel_gcm',
-     '{}_Amon_VICGL+RGM+HydroCon_ACCESS1-0_historical+rcp45_r1i1p1_20000101-20101231.nc',
+     '{}_msaClim_VICGL+RGM+HydroCon_ACCESS1-0_historical+rcp45_r1i1p1_20000101-20101231.nc',
      'BASEFLOW+EVAP+GLAC_AREA_BAND+GLAC_MBAL_BAND+RUNOFF+SWE_BAND'),
 ], indirect=['tiny_dataset'])
 @mark.parametrize('variable', [None, 'var'])
