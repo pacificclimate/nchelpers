@@ -1,4 +1,5 @@
 from datetime import datetime
+import dateutil.parser
 import hashlib
 import re
 
@@ -28,7 +29,7 @@ standard_tres_to_mip_table = {
 
 
 def cmor_type_filename(extension='', **component_values):
-    """Return filename built from supplied component values, following the a CMOR-based filename standards in
+    """Return a filename built from supplied component values, following the a CMOR-based filename standards in
     https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data    .
 
     Produces a CMOR standard filename if all and only required CMOR filename components are defined.
@@ -79,6 +80,16 @@ def _join_comma_separated_list(s, sep='+'):
     :return: see above
     """
     return re.sub(r'\s*,\s*', sep, s)
+
+
+def _cmor_formatted_time_range(t_min, t_max, time_resolution='daily'):
+    """Format a time range as string in YYYY[mm[dd]] format, min and max separated by a dash."""
+    try:
+        format = {'yearly': '%Y', 'monthly': '%Y%m', 'daily': '%Y%m%d'}[time_resolution]
+    except KeyError:
+        raise ValueError("Cannot format a time range with resolution '{}' (only yearly, monthly or daily)"
+                         .format(time_resolution))
+    return '{}-{}'.format(t_min.strftime(format), t_max.strftime(format))
 
 
 class CFDataset(Dataset):
@@ -213,7 +224,7 @@ class CFDataset(Dataset):
     @property
     def climatology_bounds_var_name(self):
         """Return the name of the climatological time bounds variable, None if no such variable exists"""
-        axes = self.dim_axes()
+        axes = self.dim_axes_from_names()
         if 'T' in axes:
             time_axis = axes['T']
         else:
@@ -275,13 +286,8 @@ class CFDataset(Dataset):
 
     @property
     def time_range_formatted(self):
-        """Format the time range as string in YYYY[mm[dd]] format, min and max separated by a dash"""
-        format = {'yearly': '%Y', 'monthly': '%Y%m', 'daily': '%Y%m%d'}.get(self.time_resolution, None)
-        if not format:
-            raise ValueError("Cannot format a time range with resolution '{}' (only yearly, monthly or daily)"
-                             .format(self.time_resolution))
-        t_min, t_max = self.time_range_as_dates
-        return '{}-{}'.format(t_min.strftime(format), t_max.strftime(format))
+        """Format the time range of this file string in YYYY[mm[dd]] format, min and max separated by a dash"""
+        return _cmor_formatted_time_range(*self.time_range_as_dates, time_resolution=self.time_resolution)
 
     @cached_property
     def time_step_size(self):
@@ -426,19 +432,25 @@ class CFDataset(Dataset):
         components = {
             'variable': '+'.join(sorted(self.dependent_varnames)),
             'ensemble_member': self.ensemble_member,
-            'time_range': self.time_range_formatted,
         }
 
         # Components depending on the type of file
         if self.is_multi_year_mean:
-            components.update(frequency=self.frequency)
+            components.update(
+                time_range=_cmor_formatted_time_range(dateutil.parser.parse(self.climo_start_time),
+                                                      dateutil.parser.parse(self.climo_end_time)),
+                frequency=self.frequency
+            )
         else:
             # Regarding how the 'mip_table' component is defined here, see the discussion in section titled
             # "MIP table / table_id" in
             # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data
             # Specifically, we do not consult the value of the attribute table_id because it is too limited for our
             # needs. Instead we map the file's time resolution to a value.
-            components.update(mip_table = tres_to_mip_table and tres_to_mip_table.get(self.time_resolution, None))
+            components.update(
+                time_range=self.time_range_formatted,
+                mip_table = tres_to_mip_table and tres_to_mip_table.get(self.time_resolution, None)
+            )
 
         if self.is_unprocessed_gcm_output:
             components.update(
@@ -461,17 +473,16 @@ class CFDataset(Dataset):
             )
         elif self.is_hydromodel_iobs_output:
             raise NotImplementedError
-            components.update(
-                hydromodel_method=_join_comma_separated_list(self.hydromodel_method_id),
-                # TODO: props for observational data info
-                geo_info=getattr(self, 'domain', None)
-            )
+            # TODO: props for observational data info
+            # components.update(
+            #     hydromodel_method=_join_comma_separated_list(self.hydromodel_method_id),
+            #     geo_info=getattr(self, 'domain', None)
+            # )
 
         # Override with supplied args
         components.update(**override)
 
         return components
-
 
     @property
     def cmor_filename(self):
@@ -507,5 +518,5 @@ class CFDataset(Dataset):
                 'yearly': 'aClim'
             }.get(self.time_resolution, None),
             tres_to_mip_table=None,
-            time_range='{}-{}'.format(d2ss(t_start), d2ss(t_end))
+            time_range=_cmor_formatted_time_range(t_start, t_end)
         ))
