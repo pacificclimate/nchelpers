@@ -134,6 +134,8 @@ class CFDataset(Dataset):
         for variable in self.variables.values():
             if hasattr(variable, 'bounds'):
                 non_dependent_variables.add(variable.bounds)
+            if hasattr(variable, 'climatology'):
+                non_dependent_variables.add(variable.climatology)
             if hasattr(variable, 'coordinates'):
                 non_dependent_variables.update(variable.coordinates.split())
         return [v for v in variables - non_dependent_variables]
