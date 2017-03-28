@@ -72,7 +72,7 @@ def standard_climo_periods(calendar='standard'):
             for k, (start_year, end_year) in standard_climo_years.items()}
 
 
-def _join_comma_separated_list(s, sep='+'):
+def _replace_commas(s, sep='+'):
     """Return a string constructed by joining with `sep` the substrings of `s` delimited by commas and arbitrary spaces.
 
     :param s: (str) string to split on commas and join with sep
@@ -461,14 +461,14 @@ class CFDataset(Dataset):
             components.update(
                 downscaling_method=self.downscaling_method_id,
                 model=self.driving_model_id,
-                experiment=_join_comma_separated_list(self.driving_experiment_id),
+                experiment=_replace_commas(self.driving_experiment_id),
                 geo_info=getattr(self, 'domain', None)
             )
         elif self.is_hydromodel_dgcm_output:
             components.update(
-                hydromodel_method=_join_comma_separated_list(self.hydromodel_method_id),
+                hydromodel_method=_replace_commas(self.hydromodel_method_id),
                 model=self.driving_model_id,
-                experiment=_join_comma_separated_list(self.driving_experiment_id),
+                experiment=_replace_commas(self.driving_experiment_id),
                 geo_info=getattr(self, 'domain', None)
             )
         elif self.is_hydromodel_iobs_output:
