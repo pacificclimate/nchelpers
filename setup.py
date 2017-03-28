@@ -1,7 +1,7 @@
 from setuptools import setup
 
 
-__version__ = (0, 0, 1)
+__version__ = (1, 0, 0)
 
 
 setup(
@@ -10,7 +10,7 @@ setup(
     keywords="NetCDF climate forecast",
     packages=['nchelpers'],
     version='.'.join(str(d) for d in __version__),
-    url="http://www.pacificclimate.org/",
+    url="https://github.com/pacificclimate/nchelpers",
     author="Rod Glover",
     author_email="rglover@uvic.ca",
     zip_safe=True,
