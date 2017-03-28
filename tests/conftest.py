@@ -5,5 +5,6 @@ from nchelpers import CFDataset
 
 
 @fixture
-def tiny_gcm():
-    return CFDataset(resource_filename('nchelpers', 'data/tiny_gcm.nc'))
+def tiny_dataset(request):
+    filename = 'data/tiny_{}.nc'.format(request.param)
+    return CFDataset(resource_filename('nchelpers', filename))

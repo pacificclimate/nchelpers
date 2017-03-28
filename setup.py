@@ -15,7 +15,12 @@ setup(
     author_email="rglover@uvic.ca",
     zip_safe=True,
     install_requires = ['netCDF4', 'cached-property'],
-    package_data = {'nchelpers': ['data/tiny_gcm.nc']},
+    package_data = {'nchelpers': [
+        'data/tiny_gcm.nc',
+        'data/tiny_downscaled.nc',
+        'data/tiny_hydromodel_gcm.nc',
+        'data/tiny_climo_gcm.nc',
+    ]},
     include_package_data = True,
     classifiers=['Development Status :: 4 - Beta',
                  'Environment :: Console',
