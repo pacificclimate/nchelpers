@@ -31,7 +31,7 @@ from nchelpers.date_utils import time_to_seconds
     ('gcm', 'time_step_size', time_to_seconds(1, 'days')),
     ('gcm', 'time_resolution', 'daily'),
     ('gcm', 'is_unprocessed_gcm_output', True),
-    ('gcm', 'is_downscaling_output', False),
+    ('gcm', 'is_downscaled_output', False),
     ('gcm', 'is_hydromodel_output', False),
     ('gcm', 'is_hydromodel_dgcm_output', False),
     # ('gcm', 'is_hydromodel_iobs_output', False), # TODO
@@ -39,7 +39,7 @@ from nchelpers.date_utils import time_to_seconds
     ('gcm', 'cmor_filename', 'tasmax_day_BNU-ESM_historical_r1i1p1_19650101-19750101.nc'),
     ('gcm', 'unique_id', 'tasmax_day_BNU-ESM_historical_r1i1p1_19650101-19750101'),
 
-    ('downscaled', 'first_MiB_md5sum', b'X\x87\xde_\xcd\r\x0f\xe1O-\xb7PF\x9f\xb1z'),
+    ('downscaled', 'first_MiB_md5sum', b'\xc9\xe8i=V\xee=\xc3\x8aJ\xfa\xe1\x10=\xf0\x1d'),
     ('downscaled', 'climatology_bounds_var_name', None),
     ('downscaled', 'is_multi_year_mean', False),
     ('downscaled', 'time_range', (711857.5, 767008.5)),
@@ -47,7 +47,7 @@ from nchelpers.date_utils import time_to_seconds
     ('downscaled', 'time_step_size', time_to_seconds(1, 'days')),
     ('downscaled', 'time_resolution', 'daily'),
     ('downscaled', 'is_unprocessed_gcm_output', False),
-    ('downscaled', 'is_downscaling_output', True),
+    ('downscaled', 'is_downscaled_output', True),
     ('downscaled', 'is_hydromodel_output', False),
     ('downscaled', 'is_hydromodel_dgcm_output', False),
     # ('downscaled', 'is_hydromodel_iobs_output', False), # TODO
@@ -63,7 +63,7 @@ from nchelpers.date_utils import time_to_seconds
     ('hydromodel_gcm', 'time_step_size', time_to_seconds(1, 'days')),
     ('hydromodel_gcm', 'time_resolution', 'daily'),
     ('hydromodel_gcm', 'is_unprocessed_gcm_output', False),
-    ('hydromodel_gcm', 'is_downscaling_output', False),
+    ('hydromodel_gcm', 'is_downscaled_output', False),
     ('hydromodel_gcm', 'is_hydromodel_output', True),
     ('hydromodel_gcm', 'is_hydromodel_dgcm_output', True),
     # ('hydromodel_gcm', 'is_hydromodel_iobs_output', False), # TODO
@@ -83,7 +83,7 @@ from nchelpers.date_utils import time_to_seconds
     ('climo_gcm', 'is_multi_year_mean', True),
     ('climo_gcm', 'time_resolution', 'monthly'), # not that this is very meaningful for a climo file
     ('climo_gcm', 'is_unprocessed_gcm_output', True), # actually so, though the term 'unprocessed' here is misleading
-    ('climo_gcm', 'is_downscaling_output', False),
+    ('climo_gcm', 'is_downscaled_output', False),
     ('climo_gcm', 'is_hydromodel_output', False),
     ('climo_gcm', 'is_hydromodel_dgcm_output', False),
     # ('climo_gcm', 'is_hydromodel_iobs_output', False), # TODO

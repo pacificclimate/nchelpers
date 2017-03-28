@@ -373,9 +373,9 @@ class CFDataset(Dataset):
         return self.product == 'output'
 
     @property
-    def is_downscaling_output(self):
+    def is_downscaled_output(self):
         """True iff the content of the file is downscaling output."""
-        return self.product == 'downscaling output'
+        return self.product == 'downscaled output'
 
     @property
     def is_hydromodel_output(self):
@@ -457,7 +457,7 @@ class CFDataset(Dataset):
                 model=self.metadata.model,
                 experiment=self.metadata.emissions,
             )
-        elif self.is_downscaling_output:
+        elif self.is_downscaled_output:
             components.update(
                 downscaling_method=self.downscaling_method_id,
                 model=self.driving_model_id,
