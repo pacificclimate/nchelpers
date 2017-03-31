@@ -8,7 +8,10 @@
 The data in these files is very limited spatially and temporally (though valid) in order to reduce their size,
 and their global metadata is standard.
 
-All tests are parameterized over these files, usually via the indirect fixture object `tiny_dataset`.
+All tests are parameterized over these files, which requires a little trickiness with fixtures.
+pytest doesn't directly support parametrizing over fixtures (which here delivers the test input file)
+To get around that, we use indirect fixtures, which are passed a parameter
+that they use to determine their behaviour, i.e. what input file to return.
 """
 from datetime import datetime
 from pytest import mark
