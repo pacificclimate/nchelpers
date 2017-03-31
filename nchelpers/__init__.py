@@ -244,6 +244,24 @@ class CFDataset(Dataset):
         return bool(self.climatology_bounds_var_name)
 
     @property
+    def lat_var(self):
+        """The latitude variable (netCDF4.Variable) in this file"""
+        axes = self.dim_axes_from_names()
+        try:
+            return self.variables[axes['Y']]
+        except KeyError:
+            raise ValueError('No axis is attributed with latitude information')
+
+    @property
+    def lon_var(self):
+        """The longitude variable (netCDF4.Variable) in this file"""
+        axes = self.dim_axes_from_names()
+        try:
+            return self.variables[axes['X']]
+        except KeyError:
+            raise ValueError('No axis is attributed with longitude information')
+
+    @property
     def time_var(self):
         """The time variable (netCDF4.Variable) in this file"""
         axes = self.dim_axes_from_names()

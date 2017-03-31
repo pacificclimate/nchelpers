@@ -198,8 +198,13 @@ def test_dependent_varnames(tiny_dataset, expected):
     'hydromodel_gcm',
     'climo_gcm',
 ], indirect=True)
-def test_time_var(tiny_dataset):
-    assert tiny_dataset.time_var.standard_name == 'time'
+@mark.parametrize('property, standard_name', [
+    ('time_var', 'time'),
+    ('lon_var', 'longitude'),
+    ('lat_var', 'latitude'),
+])
+def test_common_vars(tiny_dataset, property, standard_name):
+    assert getattr(tiny_dataset, property).standard_name == standard_name
 
 
 @mark.parametrize('tiny_dataset, start_time, end_time', [
