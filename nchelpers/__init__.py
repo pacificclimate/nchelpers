@@ -486,14 +486,13 @@ class CFDataset(Dataset):
 
     @property
     def is_hydromodel_dgcm_output(self):
-        """True iff the content of the file is output of a hydrological model driven by downscaled GCM data."""
-        return self.is_hydromodel_output and hasattr(self, 'downscaling_method_id') and hasattr(self, 'driving_model_id')
+        """True iff the content of the file is output of a hydrological model forced by downscaled GCM data."""
+        return self.is_hydromodel_output and self.forcing_type == 'downscaled gcm'
 
     @property
     def is_hydromodel_iobs_output(self):
-        """True iff the content of the file is output of a hydrological model driven by interpolated observational data."""
-        raise NotImplementedError
-        return self.is_hydromodel_output # TODO: additional conditions
+        """True iff the content of the file is output of a hydrological model forced by interpolated observational data."""
+        return self.is_hydromodel_output and self.forcing_type == 'gridded observations'
 
     @property
     def climo_periods(self):
