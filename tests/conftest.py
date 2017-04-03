@@ -14,3 +14,21 @@ def tiny_dataset(request):
     """
     filename = 'data/tiny_{}.nc'.format(request.param)
     return CFDataset(resource_filename('nchelpers', filename))
+
+
+@fixture
+def indir_dataset(tmpdir):
+    fp = tmpdir.join('fake.nc')
+    with CFDataset(fp, mode='w') as cf:
+        # ordinary values
+        cf.one = 1
+        cf.two = 2
+        # indirect values
+        cf.uno = '@one'  # one level
+        cf.un = '@uno'   # two levels
+        # circular indirection
+        cf.foo = '@bar'
+        cf.bar = '@foo'
+        # indirect without corresponding property
+        cf.baz = '@qux'
+        yield cf

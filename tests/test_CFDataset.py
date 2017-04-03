@@ -14,7 +14,7 @@ To get around that, we use indirect fixtures, which are passed a parameter
 that they use to determine their behaviour, i.e. what input file to return.
 """
 from datetime import datetime
-from pytest import mark
+from pytest import mark, raises
 from netCDF4 import num2date
 from nchelpers.date_utils import time_to_seconds
 
@@ -259,3 +259,35 @@ def test_climo_periods(tiny_dataset, expected):
 def test_climo_output_filename(tiny_dataset, pattern, all_vars, variable):
     assert tiny_dataset.climo_output_filename(datetime(2000, 1, 1), datetime(2010, 12, 31), variable) == \
            pattern.format(variable or all_vars)
+
+
+class TestIndirectValues:
+    """Test the indirect value feature of CFDataset.
+    See CFDataset class docstring for explanation of indirect values.
+    To test, we use an otherwise empty CFDataset file populated with properties (attributes) for testing.
+    For its contents, see conftest.py.
+    """
+
+    def test_is_indirected(self, indir_dataset):
+        assert not indir_dataset.is_indirected('one')
+        assert indir_dataset.is_indirected('uno')
+        assert indir_dataset.is_indirected('un')
+        assert indir_dataset.is_indirected('foo')  # even if the indirection is circular
+        assert indir_dataset.is_indirected('baz')  # even if the indirected property does not exist
+
+    def test_get_direct_value(self, indir_dataset):
+        assert indir_dataset.get_direct_value('one') == 1
+        assert indir_dataset.get_direct_value('uno') == '@one'
+
+    def test_valid_indirect(self, indir_dataset):
+        assert indir_dataset.one == 1
+        assert indir_dataset.uno == 1
+        assert indir_dataset.un == 1
+
+    def test_indirect_nonexistent(self, indir_dataset):
+        assert indir_dataset.baz == '@qux'
+
+    def test_circular_indirection(self, indir_dataset):
+        with raises(RuntimeError):
+            value = indir_dataset.foo
+            print(value)
