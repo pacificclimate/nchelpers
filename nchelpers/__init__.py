@@ -514,10 +514,16 @@ class CFDataset(Dataset):
             return template.format(r=self.realization,
                                    i=self.initialization_method,
                                    p=self.physics_version)
-        else:
+        elif self.is_downscaled_output:
             return template.format(r=self.driving_realization,
                                    i=self.driving_initialization_method,
                                    p=self.driving_physics_version)
+        elif self.is_hydromodel_dgcm_output:
+            return template.format(r=self.forcing_driving_realization,
+                                   i=self.forcing_driving_initialization_method,
+                                   p=self.forcing_driving_physics_version)
+        elif self.is_hydromodel_iobs_output:
+            raise NotImplementedError
 
     def _cmor_type_filename_components(self, tres_to_mip_table=standard_tres_to_mip_table, **override):
         """Return a dict containing appropriate arguments to function cmor_type_filename (q.v.),
@@ -568,8 +574,8 @@ class CFDataset(Dataset):
         elif self.is_hydromodel_dgcm_output:
             components.update(
                 hydromodel_method=_replace_commas(self.hydromodel_method_id),
-                model=self.driving_model_id,
-                experiment=_replace_commas(self.driving_experiment_id),
+                model=self.forcing_driving_model_id,
+                experiment=_replace_commas(self.forcing_driving_experiment_id),
                 geo_info=getattr(self, 'domain', None)
             )
         elif self.is_hydromodel_iobs_output:
