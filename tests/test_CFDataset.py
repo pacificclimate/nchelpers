@@ -21,8 +21,7 @@ from nchelpers.date_utils import time_to_seconds
 # TODO: Get a real GCM-driven hydromodel output file and adjust tiny_hydromodel_gcm.nc and its tests as necessary
 
 # TODO: Create an observation-driven hydromodel output file and use it to create tiny_hydromodel_obs.nc and tests
-# This will follow settling of metadata standard for obs-driven hydromodel output with assistance from Arelia week
-# of Mar 20
+# Arelia is preparing such a file as of Apr 4.
 
 # Test CFDataset properties that can be tested with a simple equality test. Most are of this kind.
 @mark.parametrize('tiny_dataset, prop, expected', [

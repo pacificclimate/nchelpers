@@ -50,6 +50,7 @@ def cmor_type_filename(extension='', **component_values):
         model
         experiment
         ensemble_member
+        obs_dataset_id
         time_range
         geo_info
     '''.split()
@@ -523,7 +524,9 @@ class CFDataset(Dataset):
                                    i=self.forcing_driving_initialization_method,
                                    p=self.forcing_driving_physics_version)
         elif self.is_hydromodel_iobs_output:
-            raise NotImplementedError
+            raise ValueError('ensemble_member has no meaning for a hydrological model forced by observational data')
+        else:
+            raise ValueError('cannot generate ensemble_member for a file without a recognized type')
 
     def _cmor_type_filename_components(self, tres_to_mip_table=standard_tres_to_mip_table, **override):
         """Return a dict containing appropriate arguments to function cmor_type_filename (q.v.),
@@ -579,12 +582,11 @@ class CFDataset(Dataset):
                 geo_info=getattr(self, 'domain', None)
             )
         elif self.is_hydromodel_iobs_output:
-            raise NotImplementedError
-            # TODO: props for observational data info
-            # components.update(
-            #     hydromodel_method=_join_comma_separated_list(self.hydromodel_method_id),
-            #     geo_info=getattr(self, 'domain', None)
-            # )
+            components.update(
+                hydromodel_method=_replace_commas(self.hydromodel_method_id),
+                obs_dataset_id=self.forcing_obs_dataset_id,
+                geo_info=getattr(self, 'domain', None)
+            )
 
         # Override with supplied args
         components.update(**override)
