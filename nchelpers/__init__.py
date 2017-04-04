@@ -95,7 +95,7 @@ def _cmor_formatted_time_range(t_min, t_max, time_resolution='daily'):
     return '{}-{}'.format(t_min.strftime(format), t_max.strftime(format))
 
 
-def _handle_indirection(value):
+def _indirection_info(value):
     """Return (True, <property name>) iff ``value`` is a string that indirects to another property value.
     Otherwise return (False, None).
     See CFDataset docstring for explanation of indirect values.
@@ -175,7 +175,7 @@ class CFDataset(Dataset):
         """Return True iff the property named has an indirect value.
         See class docstring for explanation of indirect values.
         """
-        return _handle_indirection(self.get_direct_value(name))[0]
+        return _indirection_info(self.get_direct_value(name))[0]
 
     def get_direct_value(self, name):
         """Return the value of the named property without indirection processing.
@@ -191,7 +191,7 @@ class CFDataset(Dataset):
         :param name: (str) name of attribute
         """
         value = super(CFDataset, self).__getattribute__(name)  # cannot use ``getattr``, otherwise infinite recursion
-        is_indirected, indirected_property = _handle_indirection(value)
+        is_indirected, indirected_property = _indirection_info(value)
         if is_indirected:
             # The condition for retrieving the value of an indirected property is
             #   ``is_indirected`` and <the property named by ``indirected_property`` exists>
