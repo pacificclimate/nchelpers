@@ -18,7 +18,8 @@ def tiny_dataset(request):
 
 @fixture
 def indir_dataset(tmpdir):
-    fp = tmpdir.join('fake.nc')
+    """Yield an otherwise empty netCDF file containing some indirected attributes for testing."""
+    fp = tmpdir.join('indirect_test.nc')
     with CFDataset(fp, mode='w') as cf:
         # ordinary values
         cf.one = 1
