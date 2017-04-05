@@ -4,10 +4,12 @@ import hashlib
 import re
 
 from cached_property import cached_property
+import numpy as np
+import six
 
 from netCDF4 import Dataset, num2date, date2num
-import numpy as np
 from nchelpers.date_utils import resolution_standard_name, time_to_seconds, d2ss
+from nchelpers.decorators import prevent_infinite_recursion
 
 # Map of nchelpers time resolution strings to MIP table names, standard where possible.
 # For an explanation of the content of this map, see the discussion in section titled "MIP table / table_id" in
@@ -48,6 +50,7 @@ def cmor_type_filename(extension='', **component_values):
         model
         experiment
         ensemble_member
+        obs_dataset_id
         time_range
         geo_info
     '''.split()
@@ -92,11 +95,59 @@ def _cmor_formatted_time_range(t_min, t_max, time_resolution='daily'):
     return '{}-{}'.format(t_min.strftime(format), t_max.strftime(format))
 
 
+def _indirection_info(value):
+    """Return (True, <property name>) iff ``value`` is a string that indirects to another property value.
+    Otherwise return (False, None).
+    See CFDataset docstring for explanation of indirect values.
+
+    :param value: (str) literal value (uninterpreted under indirection rule) of a property
+    :return: (tuple) (is_indirected, property_name) see above
+    """
+    if isinstance(value, six.string_types) and value[0] == '@':
+        return True, value[1:]
+    return False, None
+
+
 class CFDataset(Dataset):
     """Represents a CF (climate and forecast) dataset stored in a NetCDF file.
+
     Properties and methods on this class expose metadata that is expected to be found in such files,
     and values computed from that metadata.
-    
+
+    Indirect values
+    ---------------
+
+    Any property of a CFDataset object can be given an "indirect value," which is a string of the form
+
+        ``@<property name>``
+
+    ``@`` signfies indirection
+    ``<property name>`` is the name of any property of the object
+
+    The value of a property with an indirect value is the value of the property named in the indirect value.
+    If the property named in the indirect value does not exist, then the value of the property is just the unprocessed
+    value of the original property.
+
+    Example: Let cf be a CFDataset object. Then the following test passes::
+
+        cf.alpha = 'hello'              # ordinary string value
+        cf.beta = '@alpha'              # indirect value
+        assert cf.beta == 'hello'       # indirection works
+        cf.gamma = '@not_here'          # indirect to a non-existent property ...
+        assert cf.gamma == '@not_here'  # and get back the unprocessed string
+
+
+    Because indirection hides the uninterpreted value (e.g., '@alpha') of a property with an indirect value,
+    this class also has the methods::
+
+        is_indirected(name)
+        get_direct_value(name)
+
+    where ``name`` is the name of any property.
+
+    Helper functions in modelmeta
+    -----------------------------
+
     Some of this class replaces the functionality of helper functions defined in pacificclimate/modelmeta. The
     following list maps those functions to properties/methods of this class.
 
@@ -119,6 +170,40 @@ class CFDataset(Dataset):
 
     def __init__(self, *args, **kwargs):
         super(CFDataset, self).__init__(*args, **kwargs)
+
+    def is_indirected(self, name):
+        """Return True iff the property named has an indirect value.
+        See class docstring for explanation of indirect values.
+        """
+        return _indirection_info(self.get_direct_value(name))[0]
+
+    def get_direct_value(self, name):
+        """Return the value of the named property without indirection processing.
+        See class docstring for explanation of indirect values.
+        """
+        return super(CFDataset, self).__getattribute__(name)
+
+    @prevent_infinite_recursion
+    def __getattribute__(self, name):
+        """Handle indirect values for properties.
+        See class docstring for explanation of indirect values.
+
+        :param name: (str) name of attribute
+        """
+        value = super(CFDataset, self).__getattribute__(name)  # cannot use ``getattr``, otherwise infinite recursion
+        is_indirected, indirected_property = _indirection_info(value)
+        if is_indirected:
+            # The condition for retrieving the value of an indirected property is
+            #   ``is_indirected`` and <the property named by ``indirected_property`` exists>
+            # We must test attribute existence using ``super(CFDataset, self).__getattribute__`` instead of ``hasattr``
+            # in order to process circular indirection correctly. Cannot use ``hasattr`` because it captures the
+            # ``getattr`` infinite recursion exception and prevents this method from raising it correctly.
+            try:
+                super(CFDataset, self).__getattribute__(indirected_property)
+                return getattr(self, indirected_property)  # process indirect attribute normally, including indirection in it
+            except AttributeError:
+                return value
+        return value
 
     @property
     def first_MiB_md5sum(self):
@@ -242,6 +327,24 @@ class CFDataset(Dataset):
         See http://cfconventions.org/Data/cf-conventions/cf-conventions-1.6/build/cf-conventions.html#climatological-statistics,
         section 7.4"""
         return bool(self.climatology_bounds_var_name)
+
+    @property
+    def lat_var(self):
+        """The latitude variable (netCDF4.Variable) in this file"""
+        axes = self.dim_axes_from_names()
+        try:
+            return self.variables[axes['Y']]
+        except KeyError:
+            raise ValueError('No axis is attributed with latitude information')
+
+    @property
+    def lon_var(self):
+        """The longitude variable (netCDF4.Variable) in this file"""
+        axes = self.dim_axes_from_names()
+        try:
+            return self.variables[axes['X']]
+        except KeyError:
+            raise ValueError('No axis is attributed with longitude information')
 
     @property
     def time_var(self):
@@ -384,14 +487,13 @@ class CFDataset(Dataset):
 
     @property
     def is_hydromodel_dgcm_output(self):
-        """True iff the content of the file is output of a hydrological model driven by downscaled GCM data."""
-        return self.is_hydromodel_output and hasattr(self, 'downscaling_method_id') and hasattr(self, 'driving_model_id')
+        """True iff the content of the file is output of a hydrological model forced by downscaled GCM data."""
+        return self.is_hydromodel_output and self.forcing_type == 'downscaled gcm'
 
     @property
     def is_hydromodel_iobs_output(self):
-        """True iff the content of the file is output of a hydrological model driven by interpolated observational data."""
-        raise NotImplementedError
-        return self.is_hydromodel_output # TODO: additional conditions
+        """True iff the content of the file is output of a hydrological model forced by interpolated observational data."""
+        return self.is_hydromodel_output and self.forcing_type == 'gridded observations'
 
     @property
     def climo_periods(self):
@@ -413,10 +515,18 @@ class CFDataset(Dataset):
             return template.format(r=self.realization,
                                    i=self.initialization_method,
                                    p=self.physics_version)
-        else:
+        elif self.is_downscaled_output:
             return template.format(r=self.driving_realization,
                                    i=self.driving_initialization_method,
                                    p=self.driving_physics_version)
+        elif self.is_hydromodel_dgcm_output:
+            return template.format(r=self.forcing_driving_realization,
+                                   i=self.forcing_driving_initialization_method,
+                                   p=self.forcing_driving_physics_version)
+        elif self.is_hydromodel_iobs_output:
+            raise ValueError('ensemble_member has no meaning for a hydrological model forced by observational data')
+        else:
+            raise ValueError('cannot generate ensemble_member for a file without a recognized type')
 
     def _cmor_type_filename_components(self, tres_to_mip_table=standard_tres_to_mip_table, **override):
         """Return a dict containing appropriate arguments to function cmor_type_filename (q.v.),
@@ -467,17 +577,16 @@ class CFDataset(Dataset):
         elif self.is_hydromodel_dgcm_output:
             components.update(
                 hydromodel_method=_replace_commas(self.hydromodel_method_id),
-                model=self.driving_model_id,
-                experiment=_replace_commas(self.driving_experiment_id),
+                model=self.forcing_driving_model_id,
+                experiment=_replace_commas(self.forcing_driving_experiment_id),
                 geo_info=getattr(self, 'domain', None)
             )
         elif self.is_hydromodel_iobs_output:
-            raise NotImplementedError
-            # TODO: props for observational data info
-            # components.update(
-            #     hydromodel_method=_join_comma_separated_list(self.hydromodel_method_id),
-            #     geo_info=getattr(self, 'domain', None)
-            # )
+            components.update(
+                hydromodel_method=_replace_commas(self.hydromodel_method_id),
+                obs_dataset_id=self.forcing_obs_dataset_id,
+                geo_info=getattr(self, 'domain', None)
+            )
 
         # Override with supplied args
         components.update(**override)

@@ -8,18 +8,20 @@
 The data in these files is very limited spatially and temporally (though valid) in order to reduce their size,
 and their global metadata is standard.
 
-All tests are parameterized over these files, usually via the indirect fixture object `tiny_dataset`.
+All tests are parameterized over these files, which requires a little trickiness with fixtures.
+pytest doesn't directly support parametrizing over fixtures (which here delivers the test input file)
+To get around that, we use indirect fixtures, which are passed a parameter
+that they use to determine their behaviour, i.e. what input file to return.
 """
 from datetime import datetime
-from pytest import mark
+from pytest import mark, raises
 from netCDF4 import num2date
 from nchelpers.date_utils import time_to_seconds
 
 # TODO: Get a real GCM-driven hydromodel output file and adjust tiny_hydromodel_gcm.nc and its tests as necessary
 
 # TODO: Create an observation-driven hydromodel output file and use it to create tiny_hydromodel_obs.nc and tests
-# This will follow settling of metadata standard for obs-driven hydromodel output with assistance from Arelia week
-# of Mar 20
+# Arelia is preparing such a file as of Apr 4.
 
 # Test CFDataset properties that can be tested with a simple equality test. Most are of this kind.
 @mark.parametrize('tiny_dataset, prop, expected', [
@@ -195,8 +197,13 @@ def test_dependent_varnames(tiny_dataset, expected):
     'hydromodel_gcm',
     'climo_gcm',
 ], indirect=True)
-def test_time_var(tiny_dataset):
-    assert tiny_dataset.time_var.standard_name == 'time'
+@mark.parametrize('property, standard_name', [
+    ('time_var', 'time'),
+    ('lon_var', 'longitude'),
+    ('lat_var', 'latitude'),
+])
+def test_common_vars(tiny_dataset, property, standard_name):
+    assert getattr(tiny_dataset, property).standard_name == standard_name
 
 
 @mark.parametrize('tiny_dataset, start_time, end_time', [
@@ -251,3 +258,35 @@ def test_climo_periods(tiny_dataset, expected):
 def test_climo_output_filename(tiny_dataset, pattern, all_vars, variable):
     assert tiny_dataset.climo_output_filename(datetime(2000, 1, 1), datetime(2010, 12, 31), variable) == \
            pattern.format(variable or all_vars)
+
+
+class TestIndirectValues:
+    """Test the indirect value feature of CFDataset.
+    See CFDataset class docstring for explanation of indirect values.
+    To test, we use an otherwise empty CFDataset file populated with properties (attributes) for testing.
+    For its contents, see conftest.py.
+    """
+
+    def test_is_indirected(self, indir_dataset):
+        assert not indir_dataset.is_indirected('one')
+        assert indir_dataset.is_indirected('uno')
+        assert indir_dataset.is_indirected('un')
+        assert indir_dataset.is_indirected('foo')  # even if the indirection is circular
+        assert indir_dataset.is_indirected('baz')  # even if the indirected property does not exist
+
+    def test_get_direct_value(self, indir_dataset):
+        assert indir_dataset.get_direct_value('one') == 1
+        assert indir_dataset.get_direct_value('uno') == '@one'
+
+    def test_valid_indirect(self, indir_dataset):
+        assert indir_dataset.one == 1
+        assert indir_dataset.uno == 1
+        assert indir_dataset.un == 1
+
+    def test_indirect_nonexistent(self, indir_dataset):
+        assert indir_dataset.baz == '@qux'
+
+    def test_circular_indirection(self, indir_dataset):
+        with raises(RuntimeError):
+            value = indir_dataset.foo
+            print(value)
