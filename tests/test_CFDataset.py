@@ -41,11 +41,11 @@ from nchelpers.date_utils import time_to_seconds
     ('gcm', 'cmor_filename', 'tasmax_day_BNU-ESM_historical_r1i1p1_19650101-19750101.nc'),
     ('gcm', 'unique_id', 'tasmax_day_BNU-ESM_historical_r1i1p1_19650101-19750101'),
 
-    ('downscaled', 'first_MiB_md5sum', b'\xc9\xe8i=V\xee=\xc3\x8aJ\xfa\xe1\x10=\xf0\x1d'),
+    ('downscaled', 'first_MiB_md5sum', b'W\xeby\x15H\xdd\x7f\x8d\xbd\xa5\xfc\x12\xc9o\xf8\xaf'),
     ('downscaled', 'climatology_bounds_var_name', None),
     ('downscaled', 'is_multi_year_mean', False),
-    ('downscaled', 'time_range', (711857.5, 767008.5)),
-    ('downscaled', 'time_range_formatted', '19500101-21001231'),
+    ('downscaled', 'time_range', (715509.5, 727196.5)),
+    ('downscaled', 'time_range_formatted', '19600101-19911231'),
     ('downscaled', 'time_step_size', time_to_seconds(1, 'days')),
     ('downscaled', 'time_resolution', 'daily'),
     ('downscaled', 'is_unprocessed_gcm_output', False),
@@ -54,8 +54,8 @@ from nchelpers.date_utils import time_to_seconds
     ('downscaled', 'is_hydromodel_dgcm_output', False),
     # ('downscaled', 'is_hydromodel_iobs_output', False), # TODO
     ('downscaled', 'ensemble_member', 'r1i1p1'),
-    ('downscaled', 'cmor_filename', 'tasmax_day_BCCAQ2_ACCESS1-0_historical+rcp45_r1i1p1_19500101-21001231.nc'),
-    ('downscaled', 'unique_id', 'tasmax_day_BCCAQ2_ACCESS1-0_historical-rcp45_r1i1p1_19500101-21001231'),
+    ('downscaled', 'cmor_filename', 'tasmax_day_BCCAQ2_ACCESS1-0_historical+rcp45_r1i1p1_19600101-19911231.nc'),
+    ('downscaled', 'unique_id', 'tasmax_day_BCCAQ2_ACCESS1-0_historical-rcp45_r1i1p1_19600101-19911231'),
 
     # ('hydromodel_gcm', 'first_MiB_md5sum', b'?'), # TODO when the file stops changing
     ('hydromodel_gcm', 'climatology_bounds_var_name', None),
@@ -208,7 +208,7 @@ def test_common_vars(tiny_dataset, property, standard_name):
 
 @mark.parametrize('tiny_dataset, start_time, end_time', [
     ('gcm', 5475.5, 9125.5),
-    ('downscaled', 711857.5, 767008.5),
+    ('downscaled', 715509.5, 727196.5),
     ('hydromodel_gcm', 0.0, 4382.0),
     ('climo_gcm', 6585.0, 6752.0), # not exactly start and end for a climo file, but a worthwhile test
 ], indirect=['tiny_dataset'])
@@ -219,7 +219,7 @@ def test_time_var_values(tiny_dataset, start_time, end_time):
 
 @mark.parametrize('tiny_dataset, start_time, end_time', [
     ('gcm', 5475.5, 9125.5),
-    ('downscaled', 711857.5, 767008.5),
+    ('downscaled', 715509.5, 727196.5),
     ('hydromodel_gcm', 0.0, 4382.0),
     ('climo_gcm', 6585.0, 6752.0), # not exactly start and end for a climo file, but a worthwhile test
 ], indirect=['tiny_dataset'])
@@ -238,7 +238,7 @@ def test_time_steps(tiny_dataset, start_time, end_time):
 
 @mark.parametrize('tiny_dataset, expected', [
     ('gcm', set()),
-    ('downscaled', {'6190', '7100', '8110', '2020', '2050', '2080'}),
+    ('downscaled', {'6190'}),
     ('hydromodel_gcm', set()),
     # Not relevant for climo data sets
 ], indirect=['tiny_dataset'])
