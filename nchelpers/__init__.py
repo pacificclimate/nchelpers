@@ -61,7 +61,11 @@ def cmor_type_filename(extension='', **component_values):
 
 def standard_climo_periods(calendar='standard'):
     """Returns a dict containing the start and end dates, under the specified calendar, of standard climatological
-    periods, keyed by abbreviations for those periods, e.g., '6190' for 1961-1990"""
+    periods, keyed by abbreviations for those periods, e.g., '6190' for 1961-1990.
+    These periods begin Jan 1 and end Dec 31, which is a mismatch to hydrological years, which begin/end
+    Oct 1 / Sep 30. Discussions with Markus Schnorbus confirm that for 30-year means, the difference in annual and
+    season averages is negligible and therefore we do not have to allow for alternate begin and end dates.
+    """
     standard_climo_years = {
         '6190': (1961, 1990),
         '7100': (1971, 2000),
