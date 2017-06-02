@@ -192,6 +192,10 @@ def test_axes_dim(tiny_dataset, expected):
     assert tiny_dataset.axes_dim() == expected
 
 
+# TODO: Obtain a test file with reduced dimensions and test reduced_dims with it.
+# Request sent to Stephen Sobie and Trevor Murdock 2017-06-02 for such a file.
+
+
 @mark.parametrize('tiny_dataset, expected', [
     ('gcm', {'tasmax'}),
     ('downscaled', {'tasmax'}),

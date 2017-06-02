@@ -318,11 +318,34 @@ class CFDataset(Dataset):
         loses information.
         Canonical axis names are 'X' (longitude), 'Y' (latitude), 'Z' (level), 'S' (reduced XY grid), 'T' (time).
         For information on reduced grids, see http://www.unidata.ucar.edu/blogs/developer/entry/cf_reduced_grids.
+
         :param dim_names: (str) List of names of dimensions of interest, None for all dimensions in file
         :return: (dict) Dictionary mapping canonical axis name to dimension name, for specified dimension names
         '''
         # Invert {dim_name: axis} to {axis: dim_name}
         return {axis: dim_name for dim_name, axis in self.dim_axes(dim_names).items()}
+
+    def reduced_dims(self, var_name=None):
+        '''Return a dict containing the names of the X and Y dimensions of the named reduced spatial variable.
+         If the named variable is not attributed as a reduced variable, return an empty dict.
+         If the number of reduced dimensions is not 2, raise an error.
+
+         Documentation on "compression by gathering", which this method deals with:
+         http://cfconventions.org/cf-conventions/v1.6.0/cf-conventions.html#compression-by-gathering
+
+        :param var_name: (str) name of reduced spatial variable
+        :return:
+        '''
+        axes_dim = self.axes_dim()
+        if not 'S' in axes_dim:
+            return {}
+        compressed_axis_names = self.variables[var_name].compress.split()
+        if len(compressed_axis_names) != 2:
+            raise ValueError("Expected '{}:compress' to contain 2 variable names, found {}"
+                             .format(var_name, compressed_axis_names))
+        # TODO: Verify that compressed axis names are always in the order Y, X
+        return {'X': compressed_axis_names[1], 'Y': compressed_axis_names[0]}
+
 
     @property
     def climatology_bounds_var_name(self):
