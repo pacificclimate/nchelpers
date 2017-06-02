@@ -23,6 +23,8 @@ from nchelpers.date_utils import time_to_seconds
 # TODO: Create an observation-driven hydromodel output file and use it to create tiny_hydromodel_obs.nc and tests
 # Arelia is preparing such a file as of Apr 4.
 
+# TODO: Get an RCM output file and test against it. (Driven by property 'model_type'.)
+
 # Test CFDataset properties that can be tested with a simple equality test. Most are of this kind.
 @mark.parametrize('tiny_dataset, prop, expected', [
     ('gcm', 'first_MiB_md5sum', b'>\xb8\x12\xcc\xa96is\xb4\x10x\xb0\xbf\x19\xfe;'),
@@ -37,6 +39,7 @@ from nchelpers.date_utils import time_to_seconds
     ('gcm', 'is_hydromodel_output', False),
     ('gcm', 'is_hydromodel_dgcm_output', False),
     # ('gcm', 'is_hydromodel_iobs_output', False), # TODO
+    ('gcm', 'model_type', 'GCM'),
     ('gcm', 'ensemble_member', 'r1i1p1'),
     ('gcm', 'cmor_filename', 'tasmax_day_BNU-ESM_historical_r1i1p1_19650101-19750101.nc'),
     ('gcm', 'unique_id', 'tasmax_day_BNU-ESM_historical_r1i1p1_19650101-19750101'),
@@ -53,6 +56,7 @@ from nchelpers.date_utils import time_to_seconds
     ('downscaled', 'is_hydromodel_output', False),
     ('downscaled', 'is_hydromodel_dgcm_output', False),
     # ('downscaled', 'is_hydromodel_iobs_output', False), # TODO
+    ('downscaled', 'model_type', 'GCM'),
     ('downscaled', 'ensemble_member', 'r1i1p1'),
     ('downscaled', 'cmor_filename', 'tasmax_day_BCCAQ2_ACCESS1-0_historical+rcp45_r1i1p1_19600101-19911231.nc'),
     ('downscaled', 'unique_id', 'tasmax_day_BCCAQ2_ACCESS1-0_historical-rcp45_r1i1p1_19600101-19911231'),
@@ -69,6 +73,7 @@ from nchelpers.date_utils import time_to_seconds
     ('hydromodel_gcm', 'is_hydromodel_output', True),
     ('hydromodel_gcm', 'is_hydromodel_dgcm_output', True),
     # ('hydromodel_gcm', 'is_hydromodel_iobs_output', False), # TODO
+    ('hydromodel_gcm', 'model_type', 'GCM'),
     ('hydromodel_gcm', 'ensemble_member', 'r1i1p1'),
     ('hydromodel_gcm', 'cmor_filename',
      'BASEFLOW+EVAP+GLAC_AREA_BAND+GLAC_MBAL_BAND+RUNOFF+SWE_BAND_day_VICGL+RGM+HydroCon_ACCESS1-0_historical+rcp45_r1i1p1_19840101-19951231.nc'),
@@ -89,6 +94,7 @@ from nchelpers.date_utils import time_to_seconds
     ('climo_gcm', 'is_hydromodel_output', False),
     ('climo_gcm', 'is_hydromodel_dgcm_output', False),
     # ('climo_gcm', 'is_hydromodel_iobs_output', False), # TODO
+    ('climo_gcm', 'model_type', 'GCM'),
     ('climo_gcm', 'cmor_filename', 'tasmax_msaClim_BNU-ESM_historical_r1i1p1_19650101-19701230.nc'),
     ('climo_gcm', 'unique_id', 'tasmax_msaClim_BNU-ESM_historical_r1i1p1_19650101-19701230'),
 ], indirect=['tiny_dataset'])

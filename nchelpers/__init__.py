@@ -537,6 +537,19 @@ class CFDataset(Dataset):
         return self.is_hydromodel_output and self.forcing_type == 'gridded observations'
 
     @property
+    def model_type(self):
+        """String indicating what type of model the file contains.
+        Supports modelmeta/mm_cataloguer/index_netcdf.py.
+        Really rudimentary decision making about model type.
+        """
+        if self.metadata.project == 'NARCCAP' or \
+                        self.metadata.project not in ('IPCC Fourth Assessment', 'CMIP5'):
+            return 'RCM'
+        else:
+            return 'GCM'
+
+
+    @property
     def climo_periods(self):
         """List of the standard climatological periods (see function standard_climo_periods)
         that are a subset of the date range in the file."""
