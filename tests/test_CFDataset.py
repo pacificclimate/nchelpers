@@ -137,8 +137,8 @@ def test_dim_names(tiny_dataset, expected):
     'climo_gcm',
 ], indirect=True)
 @mark.parametrize('dim_name, expected', [
-    (['time'], {'T': 'time'}),
-    (['time', 'lon'], {'T': 'time', 'X': 'lon'}),
+    (['time'], {'time': 'T'}),
+    (['time', 'lon'], {'time': 'T', 'lon': 'X'}),
 ])
 def test_dim_axes_from_names(tiny_dataset, dim_name, expected):
     assert tiny_dataset.dim_axes_from_names(dim_name) == expected
@@ -146,10 +146,10 @@ def test_dim_axes_from_names(tiny_dataset, dim_name, expected):
 
 # Tests for all dimensions - may differ between datasets.
 @mark.parametrize('tiny_dataset, expected', [
-    ('gcm', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),
-    ('downscaled', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),
-    ('hydromodel_gcm', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),  # why isn't depth in this list?
-    ('climo_gcm', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),
+    ('gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
+    ('downscaled', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
+    ('hydromodel_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),  # why isn't depth in this list?
+    ('climo_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
 ], indirect=['tiny_dataset'])
 def test_dim_axes_from_names2(tiny_dataset, expected):
     assert tiny_dataset.dim_axes_from_names() == expected
@@ -179,6 +179,17 @@ def test_dim_axes(tiny_dataset, dim_name, expected):
 ], indirect=['tiny_dataset'])
 def test_dim_axes2(tiny_dataset, expected):
     assert tiny_dataset.dim_axes() == expected
+
+
+# Tests for all dimensions - may differ between datasets.
+@mark.parametrize('tiny_dataset, expected', [
+    ('gcm', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),
+    ('downscaled', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),
+    ('hydromodel_gcm', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),  # why isn't depth in this list?
+    ('climo_gcm', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),
+], indirect=['tiny_dataset'])
+def test_axes_dim(tiny_dataset, expected):
+    assert tiny_dataset.axes_dim() == expected
 
 
 @mark.parametrize('tiny_dataset, expected', [
