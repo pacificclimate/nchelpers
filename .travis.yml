@@ -9,4 +9,6 @@ install:
   - pip install -I pytest>=2.8.0
   - pip install -r requirements.txt
   - pip install .
-script: py.test -v tests
+script:
+  - flake8
+  - py.test -v tests
