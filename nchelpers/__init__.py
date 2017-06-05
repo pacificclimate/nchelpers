@@ -253,8 +253,10 @@ class CFDataset(Dataset):
             return tuple(k for k in self.dimensions.keys())
 
     def dim_axes_from_names(self, dim_names=None):
-        """Translate well-known dimension names to canonical axis names.
-        Canonical axis names are 'X', 'Y', 'Z', 'T'.
+        """Map names of dimensions in file to canonical axis names, based on well-known dimension names for axes.
+        Canonical axis names are 'X' (longitude), 'Y' (latitude), 'Z' (level), 'S' (reduced XY grid), 'T' (time).
+        For information on reduced grids, see http://www.unidata.ucar.edu/blogs/developer/entry/cf_reduced_grids.
+        Dimensions must be named with well-known names (e.g., 'latitude') to be mapped.
         See dict dim_to_axis for dimension names recognized.
         
         :param dim_names: (list of str) List of names of dimensions of interest, None for all dimensions in file
@@ -277,12 +279,14 @@ class CFDataset(Dataset):
             'lev': 'Z',
             'level': 'Z'
         }
-        return {dim_to_axis[dim]: dim for dim in dim_names if dim in dim_to_axis}
+        return {dim: dim_to_axis[dim] for dim in dim_names if dim in dim_to_axis}
 
     def dim_axes(self, dim_names=None):
         """Return a dictionary mapping specified dimension names (or all dimensions in file) to
         the canonical axis name for each dimension.
-        
+        Canonical axis names are 'X' (longitude), 'Y' (latitude), 'Z' (level), 'S' (reduced XY grid), 'T' (time).
+        For information on reduced grids, see http://www.unidata.ucar.edu/blogs/developer/entry/cf_reduced_grids.
+
         :param dim_names: (str) List of names of dimensions of interest, None for all dimensions in file
         :return: (dict) Dictionary mapping dimension name to canonical axis name, for specified dimension names
         """
@@ -293,27 +297,60 @@ class CFDataset(Dataset):
             return {}
 
         # Start with our best guess
-        axis_to_dim = self.dim_axes_from_names(dim_names)
+        dim_name_to_axis = self.dim_axes_from_names(dim_names)
 
         # Then fill in the rest from the 'axis' attributes
-        # TODO: Does this happen? i.e., when are dimension names the same as axis names?
-        # Alternatively, is this some kind of (relatively benign) programming error?
-        for axis in axis_to_dim.keys():
-            if axis in self.dimensions and axis in self.variables \
-                    and hasattr(self.variables[axis], 'axis'):
-                axis_to_dim[axis] = self.variables[axis].axis
+        for dim_name in dim_name_to_axis.keys():
+            if dim_name in self.dimensions and dim_name in self.variables \
+                    and hasattr(self.variables[dim_name], 'axis'):
+                dim_name_to_axis[dim_name] = self.variables[dim_name].axis
 
-                # Apparently this is how a "space" dimension is attributed?
-                if hasattr(self.variables[axis], 'compress'):
-                    axis_to_dim[axis] = 'S'
+                # A reduced grid dimension has the 'compress' attribute.
+                # This kind of dimension is labelled as a 'space' (S) dimension.
+                if hasattr(self.variables[dim_name], 'compress'):
+                    dim_name_to_axis[dim_name] = 'S'
 
-        # Invert {axis: dim} to {dim: axis}
-        return {dim: axis for axis, dim in axis_to_dim.items()}
+        return dim_name_to_axis
+
+    def axes_dim(self, dim_names=None):
+        '''Return a dictionary mapping canonical axis names to specified dimension names (or all dimensions in file).
+        ASSUMPTION: There is at most one dimension (name) per canonical axis name. If not, the mapping inversion
+        loses information.
+        Canonical axis names are 'X' (longitude), 'Y' (latitude), 'Z' (level), 'S' (reduced XY grid), 'T' (time).
+        For information on reduced grids, see http://www.unidata.ucar.edu/blogs/developer/entry/cf_reduced_grids.
+
+        :param dim_names: (str) List of names of dimensions of interest, None for all dimensions in file
+        :return: (dict) Dictionary mapping canonical axis name to dimension name, for specified dimension names
+        '''
+        # Invert {dim_name: axis} to {axis: dim_name}
+        return {axis: dim_name for dim_name, axis in self.dim_axes(dim_names).items()}
+
+    def reduced_dims(self, var_name=None):
+        '''Return a dict containing the names of the X and Y dimensions of the named reduced spatial variable.
+         If the named variable is not attributed as a reduced variable, return an empty dict.
+         If the number of reduced dimensions is not 2, raise an error.
+
+         Documentation on "compression by gathering", which this method deals with:
+         http://cfconventions.org/cf-conventions/v1.6.0/cf-conventions.html#compression-by-gathering
+
+        :param var_name: (str) name of reduced spatial variable
+        :return:
+        '''
+        axes_dim = self.axes_dim()
+        if not 'S' in axes_dim:
+            return {}
+        compressed_axis_names = self.variables[var_name].compress.split()
+        if len(compressed_axis_names) != 2:
+            raise ValueError("Expected '{}:compress' to contain 2 variable names, found {}"
+                             .format(var_name, compressed_axis_names))
+        # TODO: Verify that compressed axis names are always in the order Y, X
+        return {'X': compressed_axis_names[1], 'Y': compressed_axis_names[0]}
+
 
     @property
     def climatology_bounds_var_name(self):
         """Return the name of the climatological time bounds variable, None if no such variable exists"""
-        axes = self.dim_axes_from_names()
+        axes = self.axes_dim()
         if 'T' in axes:
             time_axis = axes['T']
         else:
@@ -335,7 +372,7 @@ class CFDataset(Dataset):
     @property
     def lat_var(self):
         """The latitude variable (netCDF4.Variable) in this file"""
-        axes = self.dim_axes_from_names()
+        axes = self.axes_dim()
         try:
             return self.variables[axes['Y']]
         except KeyError:
@@ -344,7 +381,7 @@ class CFDataset(Dataset):
     @property
     def lon_var(self):
         """The longitude variable (netCDF4.Variable) in this file"""
-        axes = self.dim_axes_from_names()
+        axes = self.axes_dim()
         try:
             return self.variables[axes['X']]
         except KeyError:
@@ -353,7 +390,7 @@ class CFDataset(Dataset):
     @property
     def time_var(self):
         """The time variable (netCDF4.Variable) in this file"""
-        axes = self.dim_axes_from_names()
+        axes = self.axes_dim()
         if 'T' in axes:
             time_axis = axes['T']
         else:
@@ -500,6 +537,19 @@ class CFDataset(Dataset):
         return self.is_hydromodel_output and self.forcing_type == 'gridded observations'
 
     @property
+    def model_type(self):
+        """String indicating what type of model the file contains.
+        Supports modelmeta/mm_cataloguer/index_netcdf.py.
+        Really rudimentary decision making about model type.
+        """
+        if self.metadata.project == 'NARCCAP' or \
+                        self.metadata.project not in ('IPCC Fourth Assessment', 'CMIP5'):
+            return 'RCM'
+        else:
+            return 'GCM'
+
+
+    @property
     def climo_periods(self):
         """List of the standard climatological periods (see function standard_climo_periods)
         that are a subset of the date range in the file."""
@@ -612,7 +662,7 @@ class CFDataset(Dataset):
         """A unique id for this file, based on its CMOR filename"""
         unique_id = cmor_type_filename(**self._cmor_type_filename_components())
 
-        dim_axes = set(self.dim_axes_from_names().keys())
+        dim_axes = set(self.dim_axes_from_names().values())
         if not (dim_axes <= {'X', 'Y', 'Z', 'T'}):
             unique_id += "_dim" + ''.join(sorted(dim_axes))
 
