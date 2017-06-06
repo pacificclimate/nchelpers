@@ -1,6 +1,14 @@
 News / Release Notes
 ====================
 
+1.0.3
+-----
+
+*Release Date: 06-Jun-2017*
+
+* Adds undeclared dependency to setup.py (GH #17)
+
+
 1.0.2
 -----
 

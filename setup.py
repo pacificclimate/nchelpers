@@ -1,6 +1,6 @@
 from setuptools import setup
 
-__version__ = (1, 0, 2)
+__version__ = (1, 0, 3)
 
 setup(
     name="nchelpers",
@@ -13,7 +13,7 @@ setup(
     author="Rod Glover",
     author_email="rglover@uvic.ca",
     zip_safe=True,
-    install_requires=['netCDF4', 'cached-property'],
+    install_requires=['netCDF4', 'cached-property', 'python-dateutil'],
     package_data={'nchelpers': [
         'data/tiny_gcm.nc',
         'data/tiny_downscaled.nc',
