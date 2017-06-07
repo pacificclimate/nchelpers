@@ -28,6 +28,7 @@ from nchelpers.date_utils import time_to_seconds
 # Test CFDataset properties that can be tested with a simple equality test. Most are of this kind.
 @mark.parametrize('tiny_dataset, prop, expected', [
     ('gcm', 'first_MiB_md5sum', b'>\xb8\x12\xcc\xa96is\xb4\x10x\xb0\xbf\x19\xfe;'),
+    ('gcm', 'md5', '3eb812cca9366973b41078b0bf19fe3b'),
     ('gcm', 'climatology_bounds_var_name', None),
     ('gcm', 'is_multi_year_mean', False),
     ('gcm', 'time_range', (5475.5, 9125.5)),
@@ -45,6 +46,7 @@ from nchelpers.date_utils import time_to_seconds
     ('gcm', 'unique_id', 'tasmax_day_BNU-ESM_historical_r1i1p1_19650101-19750101'),
 
     ('downscaled', 'first_MiB_md5sum', b'W\xeby\x15H\xdd\x7f\x8d\xbd\xa5\xfc\x12\xc9o\xf8\xaf'),
+    ('downscaled', 'md5', '57eb791548dd7f8dbda5fc12c96ff8af'),
     ('downscaled', 'climatology_bounds_var_name', None),
     ('downscaled', 'is_multi_year_mean', False),
     ('downscaled', 'time_range', (715509.5, 727196.5)),
@@ -61,7 +63,8 @@ from nchelpers.date_utils import time_to_seconds
     ('downscaled', 'cmor_filename', 'tasmax_day_BCCAQ2_ACCESS1-0_historical+rcp45_r1i1p1_19600101-19911231.nc'),
     ('downscaled', 'unique_id', 'tasmax_day_BCCAQ2_ACCESS1-0_historical-rcp45_r1i1p1_19600101-19911231'),
 
-    # ('hydromodel_gcm', 'first_MiB_md5sum', b'?'), # TODO when the file stops changing
+    ('hydromodel_gcm', 'first_MiB_md5sum', b'\xb2\xb30!q\x9d\xa5\xcdc\xbe\xfe\x07\x18]\xbf\xe2'),
+    ('hydromodel_gcm', 'md5', 'd4273596b44a70cecc7b5636e74d86b5'),
     ('hydromodel_gcm', 'climatology_bounds_var_name', None),
     ('hydromodel_gcm', 'is_multi_year_mean', False),
     ('hydromodel_gcm', 'time_range', (0.0, 4382.0)),
@@ -85,7 +88,8 @@ from nchelpers.date_utils import time_to_seconds
     #   time_range_formatted
     #   time_step_size
     #   time_resolution
-    # ('climo_gcm', 'first_MiB_md5sum', b'Y\x86\xed,\x02K\x8a,\xd9\xe4|\x17\xfc\xd3\xb8\x03'),
+    ('climo_gcm', 'first_MiB_md5sum', b'\xb9\xceE\xac\xbe\xfa\xe1\x85\xfb\xbc@(\xe5~gX'),
+    ('climo_gcm', 'md5', 'b9ce45acbefae185fbbc4028e57e6758'),
     ('climo_gcm', 'climatology_bounds_var_name', 'climatology_bnds'),
     ('climo_gcm', 'is_multi_year_mean', True),
     ('climo_gcm', 'time_resolution', 'monthly'), # not that this is very meaningful for a climo file

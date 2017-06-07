@@ -218,6 +218,17 @@ class CFDataset(Dataset):
         return m.digest()
 
     @property
+    def md5(self):
+        """MD5 hex digest of entirety of this file.
+        Parsimonious with memory. Adopted from https://stackoverflow.com/a/3431838
+        """
+        hash_md5 = hashlib.md5()
+        with open(self.filepath(), 'rb') as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
+
+    @property
     def dependent_varnames(self):
         """A list of the primary (dependent) variables in this file.
 
