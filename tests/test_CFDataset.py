@@ -129,6 +129,18 @@ def test_metadata_simple_property(tiny_dataset, prop, expected):
     assert getattr(tiny_dataset.metadata, prop) == expected
 
 
+@mark.parametrize('tiny_dataset, var_name', [
+    ('gcm', 'lat'),
+    ('gcm', 'lon'),
+], indirect=['tiny_dataset'])
+def test_get_var_bounds_and_values(tiny_dataset, var_name):
+    bvs = tiny_dataset.var_bounds_and_values(var_name)
+    var = tiny_dataset.variables[var_name]
+    for i, (lower, value, upper) in enumerate(bvs):
+        assert lower < value < upper
+        assert value == var[i]
+
+
 @mark.parametrize('tiny_dataset, var_name, expected', [
     ('gcm', 'time', (5475.5, 9125.5)),
     ('gcm', 'lon', (264.375, 272.8125)),

@@ -464,6 +464,32 @@ class CFDataset(Dataset):
         #    return 'other'
         return resolution_standard_name(self.time_step_size)
 
+    def var_bounds_and_values(self, var_name, bounds_var_name=None):
+        """Return a list of tuples describing the bounds and values of a NetCDF variable.
+        One tuple per variable value, defining (lower_bound, value, upper_bound)
+
+        :param var_name: (str) name of NetCDF variable
+        :param bounds_var_name: name of bounds variable; if not specified, use variable.bounds
+        :return: list of tuples of the form (lower_bound, value, upper_bound)
+        """
+        variable = self.variables[var_name]
+        values = variable[:]
+        bounds_var_name = bounds_var_name or getattr(variable, 'bounds', None)
+
+        if bounds_var_name:
+            # Explicitly defined bounds: use them
+            bounds_var = self.variables[bounds_var_name]
+            return zip(bounds_var[:, 0], values, bounds_var[:, 1])
+        else:
+            # No explicit bounds: manufacture them
+            midpoints = (
+                [(3*values[0] - values[1]) / 2] +   # fake lower "midpoint", half of previous step below first value
+                [(values[i] + values[i+1]) / 2 for i in range(len(values)-1)] +
+                [(3*values[-1] - values[-2]) / 2]   # fake upper "midpoint", half of previous step above last value
+            )
+            return zip(midpoints[:-1], values, midpoints[1:])
+
+
     def var_range(self, var_name):
         """Return minimum and maximum value taken by variable (over all dimensions).
 
