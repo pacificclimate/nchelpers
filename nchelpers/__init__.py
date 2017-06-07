@@ -464,6 +464,17 @@ class CFDataset(Dataset):
         #    return 'other'
         return resolution_standard_name(self.time_step_size)
 
+    def variable_range(self, var_name):
+        """Return minimum and maximum value taken by variable (over all dimensions).
+
+        :param var_name: (str) name of variable
+        :return (tuple) (min, max) minimum and maximum values
+        """
+        # TODO: What about fill values?
+        variable = self.variables[var_name]
+        values = variable[:]
+        return np.nanmin(values), np.nanmax(values)
+
     class UnifiedMetadata(object):
         """Presents a unified interface to certain global metadata attributes in a CFDataset object.
         Why?

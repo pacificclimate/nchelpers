@@ -14,7 +14,7 @@ To get around that, we use indirect fixtures, which are passed a parameter
 that they use to determine their behaviour, i.e. what input file to return.
 """
 from datetime import datetime
-from pytest import mark, raises
+from pytest import mark, raises, approx
 from netCDF4 import num2date
 from nchelpers.date_utils import time_to_seconds
 
@@ -127,6 +127,16 @@ def test_simple_property(tiny_dataset, prop, expected):
 ], indirect=['tiny_dataset'])
 def test_metadata_simple_property(tiny_dataset, prop, expected):
     assert getattr(tiny_dataset.metadata, prop) == expected
+
+
+@mark.parametrize('tiny_dataset, var_name, expected', [
+    ('gcm', 'time', (5475.5, 9125.5)),
+    ('gcm', 'lon', (264.375, 272.8125)),
+    ('gcm', 'lat', (65.5776, 73.9475)),
+    ('gcm', 'tasmax', (220.68445, 304.13501)),
+], indirect=['tiny_dataset'])
+def test_variable_range(tiny_dataset, var_name, expected):
+    assert tiny_dataset.variable_range(var_name) == approx(expected)
 
 
 @mark.parametrize('tiny_dataset, expected', [
