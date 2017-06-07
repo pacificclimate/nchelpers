@@ -464,7 +464,7 @@ class CFDataset(Dataset):
         #    return 'other'
         return resolution_standard_name(self.time_step_size)
 
-    def variable_range(self, var_name):
+    def var_range(self, var_name):
         """Return minimum and maximum value taken by variable (over all dimensions).
 
         :param var_name: (str) name of variable
