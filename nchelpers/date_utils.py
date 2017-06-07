@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, date
+import collections
 
 
 def resolution_standard_name(seconds):
@@ -34,6 +35,33 @@ def time_to_seconds(x, units='seconds'):
         return x * seconds_per_unit[units]
     else:
         raise ValueError("No conversions available for unit '{}'".format(units))
+
+
+def to_datetime(value):
+    """Convert (iterables of) datetime-like values to real datetime values.
+
+    WARNING: Does not recode for non-standard calendars.
+
+    Motivation: NetCDF.num2date returns a 'phony' datetime-like object when the calendar is not one of
+    'proleptic_gregorian', 'standard' or 'gregorian'.
+    See http://unidata.github.io/netcdf4-python/#netCDF4.num2date for more details.
+
+    In some cases, a phony datetime object is not acceptable. For example,
+    SQLite DateTime type only accepts Python datetime and date objects as input.
+
+    This function creates a true python datetime object from a phony one by mapping the
+    date and time attributes from the latter to the former.
+    """
+    # TODO: Convert time values in case of 360_day calendar?
+    # See https://github.com/pacificclimate/modelmeta/blob/master/db/index_netcdf.r#L468-L479
+    if isinstance(value, collections.Iterable):
+        return (to_datetime(v) for v in value)
+    if isinstance(value, (datetime, date)):
+        return value
+    return datetime(
+        *(getattr(value, attr) for attr in 'year month day'.split()),
+        **{attr: getattr(value, attr) for attr in 'hour minute second microsecond'.split()}
+    )
 
 
 def d2s(date):
