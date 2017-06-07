@@ -215,7 +215,7 @@ class CFDataset(Dataset):
         m = hashlib.md5()
         with open(self.filepath(), 'rb') as f:
             m.update(f.read(2**20))
-        return m.digest()
+        return m.hexdigest()
 
     @property
     def dependent_varnames(self):
