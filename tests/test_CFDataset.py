@@ -27,7 +27,7 @@ from nchelpers.date_utils import time_to_seconds
 
 # Test CFDataset properties that can be tested with a simple equality test. Most are of this kind.
 @mark.parametrize('tiny_dataset, prop, expected', [
-    ('gcm', 'first_MiB_md5sum', b'>\xb8\x12\xcc\xa96is\xb4\x10x\xb0\xbf\x19\xfe;'),
+    ('gcm', 'first_MiB_md5sum', '3eb812cca9366973b41078b0bf19fe3b'),
     ('gcm', 'climatology_bounds_var_name', None),
     ('gcm', 'is_multi_year_mean', False),
     ('gcm', 'time_range', (5475.5, 9125.5)),
@@ -44,7 +44,7 @@ from nchelpers.date_utils import time_to_seconds
     ('gcm', 'cmor_filename', 'tasmax_day_BNU-ESM_historical_r1i1p1_19650101-19750101.nc'),
     ('gcm', 'unique_id', 'tasmax_day_BNU-ESM_historical_r1i1p1_19650101-19750101'),
 
-    ('downscaled', 'first_MiB_md5sum', b'W\xeby\x15H\xdd\x7f\x8d\xbd\xa5\xfc\x12\xc9o\xf8\xaf'),
+    ('downscaled', 'first_MiB_md5sum', '57eb791548dd7f8dbda5fc12c96ff8af'),
     ('downscaled', 'climatology_bounds_var_name', None),
     ('downscaled', 'is_multi_year_mean', False),
     ('downscaled', 'time_range', (715509.5, 727196.5)),
