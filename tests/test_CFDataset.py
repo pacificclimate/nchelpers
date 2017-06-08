@@ -180,7 +180,7 @@ def test_dim_axes_from_names(tiny_dataset, dim_name, expected):
 @mark.parametrize('tiny_dataset, expected', [
     ('gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
     ('downscaled', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
-    ('hydromodel_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),  # why isn't depth in this list?
+    ('hydromodel_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y', 'depth': 'Z'}),
     ('climo_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
 ], indirect=['tiny_dataset'])
 def test_dim_axes_from_names2(tiny_dataset, expected):
@@ -206,7 +206,7 @@ def test_dim_axes(tiny_dataset, dim_name, expected):
 @mark.parametrize('tiny_dataset, expected', [
     ('gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
     ('downscaled', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
-    ('hydromodel_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),  # why isn't depth in this list?
+    ('hydromodel_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y', 'depth': 'Z'}),
     ('climo_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
 ], indirect=['tiny_dataset'])
 def test_dim_axes2(tiny_dataset, expected):
@@ -217,7 +217,7 @@ def test_dim_axes2(tiny_dataset, expected):
 @mark.parametrize('tiny_dataset, expected', [
     ('gcm', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),
     ('downscaled', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),
-    ('hydromodel_gcm', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),  # why isn't depth in this list?
+    ('hydromodel_gcm', {'T': 'time', 'X': 'lon', 'Y': 'lat', 'Z': 'depth'}),
     ('climo_gcm', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),
 ], indirect=['tiny_dataset'])
 def test_axes_dim(tiny_dataset, expected):

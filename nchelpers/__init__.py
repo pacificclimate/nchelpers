@@ -288,7 +288,8 @@ class CFDataset(Dataset):
             'timeofyear': 'T',
             'plev': 'Z',
             'lev': 'Z',
-            'level': 'Z'
+            'level': 'Z',
+            'depth': 'Z',
         }
         return {dim: dim_to_axis[dim] for dim in dim_names if dim in dim_to_axis}
 
