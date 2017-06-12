@@ -1,6 +1,20 @@
 News / Release Notes
 ====================
 
+1.0.4
+-----
+
+*Release Date: 12-Jun-2017*
+
+* Fixes first_MiB_md5sum attribute of CFDataset to be hex rather than binary
+* More updates in support of modelmeta index_netcdf.py
+  * Adds 'depth' to set of recognized Z axis dimensions
+  * Adds md5 attribute for a digest of the *full* file
+  * Adds to_datetime to the date utils
+  * Adds method var_range()
+  * Adds method var_bounds_and_values()
+
+
 1.0.3
 -----
 
