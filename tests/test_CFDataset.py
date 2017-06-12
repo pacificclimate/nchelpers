@@ -63,7 +63,7 @@ from nchelpers.date_utils import time_to_seconds
     ('downscaled', 'cmor_filename', 'tasmax_day_BCCAQ2_ACCESS1-0_historical+rcp45_r1i1p1_19600101-19911231.nc'),
     ('downscaled', 'unique_id', 'tasmax_day_BCCAQ2_ACCESS1-0_historical-rcp45_r1i1p1_19600101-19911231'),
 
-    ('hydromodel_gcm', 'first_MiB_md5sum', b'\xb2\xb30!q\x9d\xa5\xcdc\xbe\xfe\x07\x18]\xbf\xe2'),
+    ('hydromodel_gcm', 'first_MiB_md5sum', 'b2b33021719da5cd63befe07185dbfe2'),
     ('hydromodel_gcm', 'md5', 'd4273596b44a70cecc7b5636e74d86b5'),
     ('hydromodel_gcm', 'climatology_bounds_var_name', None),
     ('hydromodel_gcm', 'is_multi_year_mean', False),
@@ -88,7 +88,7 @@ from nchelpers.date_utils import time_to_seconds
     #   time_range_formatted
     #   time_step_size
     #   time_resolution
-    ('climo_gcm', 'first_MiB_md5sum', b'\xb9\xceE\xac\xbe\xfa\xe1\x85\xfb\xbc@(\xe5~gX'),
+    ('climo_gcm', 'first_MiB_md5sum', 'b9ce45acbefae185fbbc4028e57e6758'),
     ('climo_gcm', 'md5', 'b9ce45acbefae185fbbc4028e57e6758'),
     ('climo_gcm', 'climatology_bounds_var_name', 'climatology_bnds'),
     ('climo_gcm', 'is_multi_year_mean', True),
