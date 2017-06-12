@@ -14,7 +14,7 @@ To get around that, we use indirect fixtures, which are passed a parameter
 that they use to determine their behaviour, i.e. what input file to return.
 """
 from datetime import datetime
-from pytest import mark, raises
+from pytest import mark, raises, approx
 from netCDF4 import num2date
 from nchelpers.date_utils import time_to_seconds
 
@@ -28,6 +28,7 @@ from nchelpers.date_utils import time_to_seconds
 # Test CFDataset properties that can be tested with a simple equality test. Most are of this kind.
 @mark.parametrize('tiny_dataset, prop, expected', [
     ('gcm', 'first_MiB_md5sum', '3eb812cca9366973b41078b0bf19fe3b'),
+    ('gcm', 'md5', '3eb812cca9366973b41078b0bf19fe3b'),
     ('gcm', 'climatology_bounds_var_name', None),
     ('gcm', 'is_multi_year_mean', False),
     ('gcm', 'time_range', (5475.5, 9125.5)),
@@ -45,6 +46,7 @@ from nchelpers.date_utils import time_to_seconds
     ('gcm', 'unique_id', 'tasmax_day_BNU-ESM_historical_r1i1p1_19650101-19750101'),
 
     ('downscaled', 'first_MiB_md5sum', '57eb791548dd7f8dbda5fc12c96ff8af'),
+    ('downscaled', 'md5', '57eb791548dd7f8dbda5fc12c96ff8af'),
     ('downscaled', 'climatology_bounds_var_name', None),
     ('downscaled', 'is_multi_year_mean', False),
     ('downscaled', 'time_range', (715509.5, 727196.5)),
@@ -61,7 +63,8 @@ from nchelpers.date_utils import time_to_seconds
     ('downscaled', 'cmor_filename', 'tasmax_day_BCCAQ2_ACCESS1-0_historical+rcp45_r1i1p1_19600101-19911231.nc'),
     ('downscaled', 'unique_id', 'tasmax_day_BCCAQ2_ACCESS1-0_historical-rcp45_r1i1p1_19600101-19911231'),
 
-    # ('hydromodel_gcm', 'first_MiB_md5sum', b'?'), # TODO when the file stops changing
+    ('hydromodel_gcm', 'first_MiB_md5sum', 'b2b33021719da5cd63befe07185dbfe2'),
+    ('hydromodel_gcm', 'md5', 'd4273596b44a70cecc7b5636e74d86b5'),
     ('hydromodel_gcm', 'climatology_bounds_var_name', None),
     ('hydromodel_gcm', 'is_multi_year_mean', False),
     ('hydromodel_gcm', 'time_range', (0.0, 4382.0)),
@@ -85,7 +88,8 @@ from nchelpers.date_utils import time_to_seconds
     #   time_range_formatted
     #   time_step_size
     #   time_resolution
-    # ('climo_gcm', 'first_MiB_md5sum', b'Y\x86\xed,\x02K\x8a,\xd9\xe4|\x17\xfc\xd3\xb8\x03'),
+    ('climo_gcm', 'first_MiB_md5sum', 'b9ce45acbefae185fbbc4028e57e6758'),
+    ('climo_gcm', 'md5', 'b9ce45acbefae185fbbc4028e57e6758'),
     ('climo_gcm', 'climatology_bounds_var_name', 'climatology_bnds'),
     ('climo_gcm', 'is_multi_year_mean', True),
     ('climo_gcm', 'time_resolution', 'monthly'), # not that this is very meaningful for a climo file
@@ -125,6 +129,28 @@ def test_metadata_simple_property(tiny_dataset, prop, expected):
     assert getattr(tiny_dataset.metadata, prop) == expected
 
 
+@mark.parametrize('tiny_dataset, var_name', [
+    ('gcm', 'lat'),
+    ('gcm', 'lon'),
+], indirect=['tiny_dataset'])
+def test_get_var_bounds_and_values(tiny_dataset, var_name):
+    bvs = tiny_dataset.var_bounds_and_values(var_name)
+    var = tiny_dataset.variables[var_name]
+    for i, (lower, value, upper) in enumerate(bvs):
+        assert lower < value < upper
+        assert value == var[i]
+
+
+@mark.parametrize('tiny_dataset, var_name, expected', [
+    ('gcm', 'time', (5475.5, 9125.5)),
+    ('gcm', 'lon', (264.375, 272.8125)),
+    ('gcm', 'lat', (65.5776, 73.9475)),
+    ('gcm', 'tasmax', (220.68445, 304.13501)),
+], indirect=['tiny_dataset'])
+def test_variable_range(tiny_dataset, var_name, expected):
+    assert tiny_dataset.var_range(var_name) == approx(expected)
+
+
 @mark.parametrize('tiny_dataset, expected', [
     ('gcm', {'time', 'lon', 'lat', 'nb2'}),
     ('downscaled', {'time', 'lon', 'lat'}),
@@ -154,7 +180,7 @@ def test_dim_axes_from_names(tiny_dataset, dim_name, expected):
 @mark.parametrize('tiny_dataset, expected', [
     ('gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
     ('downscaled', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
-    ('hydromodel_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),  # why isn't depth in this list?
+    ('hydromodel_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y', 'depth': 'Z'}),
     ('climo_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
 ], indirect=['tiny_dataset'])
 def test_dim_axes_from_names2(tiny_dataset, expected):
@@ -180,7 +206,7 @@ def test_dim_axes(tiny_dataset, dim_name, expected):
 @mark.parametrize('tiny_dataset, expected', [
     ('gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
     ('downscaled', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
-    ('hydromodel_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),  # why isn't depth in this list?
+    ('hydromodel_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y', 'depth': 'Z'}),
     ('climo_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
 ], indirect=['tiny_dataset'])
 def test_dim_axes2(tiny_dataset, expected):
@@ -191,7 +217,7 @@ def test_dim_axes2(tiny_dataset, expected):
 @mark.parametrize('tiny_dataset, expected', [
     ('gcm', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),
     ('downscaled', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),
-    ('hydromodel_gcm', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),  # why isn't depth in this list?
+    ('hydromodel_gcm', {'T': 'time', 'X': 'lon', 'Y': 'lat', 'Z': 'depth'}),
     ('climo_gcm', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),
 ], indirect=['tiny_dataset'])
 def test_axes_dim(tiny_dataset, expected):
