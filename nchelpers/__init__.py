@@ -520,25 +520,39 @@ class CFDataset(Dataset):
             self.dataset = dataset
 
         _aliases = {
+            # Original aliases - some mangle the terminology somewhat, at least by CMIP5 notions
+            'project': {
+                'CMIP3': 'project_id',
+                'CMIP5': 'project_id',
+            },
             'institution': {
                 'CMIP3': 'institute',
                 'CMIP5': 'institute_id',
             },
             'model': {
                 'CMIP3': 'source',
-                'CMIP5': 'model_id',
+                'CMIP5': 'prefixed.model_id',
             },
             'emissions': {
                 'CMIP3': 'experiment_id',
-                'CMIP5': 'experiment_id',
+                'CMIP5': 'prefixed.experiment_id',
             },
             'run': {
                 'CMIP3': 'realization',
-                'CMIP5': 'parent_experiment_rip',
+                'CMIP5': 'ensemble_member',  # uses prefixed values
             },
-            'project': {
-                'CMIP3': 'project_id',
-                'CMIP5': 'project_id',
+            # Better aliases - adhere to CMIP5 terminology
+            'institute': {
+                'CMIP3': 'institute',
+                'CMIP5': 'institute_id',
+            },
+            'experiment': {
+                'CMIP3': 'experiment_id',
+                'CMIP5': 'prefixed.experiment_id',
+            },
+            'ensemble_member': {
+                'CMIP3': 'realization',
+                'CMIP5': 'ensemble_member',  # uses prefixed values
             },
         }
 
@@ -547,11 +561,20 @@ class CFDataset(Dataset):
             if project_id not in ['CMIP3', 'CMIP5']:
                 raise ValueError("Expected file to have project id of 'CMIP3' or 'CMIP5', found '{}'"
                                  .format(project_id))
+
             if alias not in self._aliases.keys():
                 raise AttributeError("No such unified attribute: '{}'".format(alias))
+
+            def getdottedattr(obj, dotted_attr):
+                attrs = dotted_attr.split('.')
+                value = obj
+                for attr in attrs:
+                    value = getattr(value, attr)
+                return value
+
             attr = self._aliases[alias][project_id]
             try:
-                return getattr(self.dataset, attr)
+                return getdottedattr(self.dataset, attr)
             except:
                 raise AttributeError("Expected file to contain attribute '{}' but no such attribute exists"
                                      .format(attr))

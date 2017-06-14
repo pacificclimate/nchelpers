@@ -144,19 +144,33 @@ def test_prefixed_simple_property(tiny_dataset, prop, expected):
     ('gcm', 'institution', 'BNU'),
     ('gcm', 'model', 'BNU-ESM'),
     ('gcm', 'emissions', 'historical'),
+    ('gcm', 'experiment', 'historical'),
     ('gcm', 'run', 'r1i1p1'),
+    ('gcm', 'ensemble_member', 'r1i1p1'),
     
     ('downscaled', 'project', 'CMIP5'),
     ('downscaled', 'institution', 'PCIC'),
-    
+    ('downscaled', 'model', 'ACCESS1-0'),
+    ('downscaled', 'emissions', 'historical, rcp45'),
+    ('downscaled', 'experiment', 'historical, rcp45'),
+    ('downscaled', 'run', 'r1i1p1'),
+    ('downscaled', 'ensemble_member', 'r1i1p1'),
+
     ('hydromodel_gcm', 'project', 'CMIP5'),
     ('hydromodel_gcm', 'institution', 'PCIC'),
+    ('hydromodel_gcm', 'model', 'ACCESS1-0'),
+    ('hydromodel_gcm', 'emissions', 'historical, rcp45'),
+    ('hydromodel_gcm', 'experiment', 'historical, rcp45'),
+    ('hydromodel_gcm', 'run', 'r1i1p1'),
+    ('hydromodel_gcm', 'ensemble_member', 'r1i1p1'),
 
     ('climo_gcm', 'project', 'CMIP5'),
     ('climo_gcm', 'institution', 'BNU'),
     ('climo_gcm', 'model', 'BNU-ESM'),
     ('climo_gcm', 'emissions', 'historical'),
+    ('climo_gcm', 'experiment', 'historical'),
     ('climo_gcm', 'run', 'r1i1p1'),
+    ('climo_gcm', 'ensemble_member', 'r1i1p1'),
 ], indirect=['tiny_dataset'])
 def test_metadata_simple_property(tiny_dataset, prop, expected):
     assert getattr(tiny_dataset.metadata, prop) == expected
