@@ -599,6 +599,33 @@ class CFDataset(Dataset):
         else:
             return 'GCM'
 
+    class AutoPrefix(object):
+        def __init__(self, dataset):
+            self.dataset = dataset
+
+        def __getattr__(self, attr):
+            """CMIP5 standard ensemble member code for this file"""
+            if self.dataset.is_unprocessed_gcm_output:
+                prefix = ''
+            elif self.dataset.is_downscaled_output:
+                prefix = 'driving_'
+            elif self.dataset.is_hydromodel_dgcm_output:
+                prefix = 'forcing_driving_'
+            elif self.dataset.is_hydromodel_iobs_output:
+                raise ValueError('ensemble_member has no meaning for a hydrological model forced by observational data')
+            else:
+                raise ValueError('cannot generate ensemble_member for a file without a recognized type')
+
+            prefixed_attr = prefix + attr
+            try:
+                return getattr(self.dataset, prefixed_attr)
+            except:
+                raise AttributeError("Expected file to contain attribute '{}' but no such attribute exists"
+                                     .format(prefixed_attr))
+
+    @property
+    def prefixed(self):
+        return self.AutoPrefix(self)
 
     @property
     def climo_periods(self):
