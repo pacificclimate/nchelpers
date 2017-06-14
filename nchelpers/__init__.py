@@ -623,6 +623,9 @@ class CFDataset(Dataset):
             return 'GCM'
 
     class AutoPrefix(object):
+        """Add an automatically computed prefix to a base property name before accessing it.
+        Prefix is based on the content of the file.
+        """
         def __init__(self, dataset):
             self.dataset = dataset
 
