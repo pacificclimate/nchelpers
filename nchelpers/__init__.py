@@ -15,24 +15,24 @@ from nchelpers.decorators import prevent_infinite_recursion
 # For an explanation of the content of this map, see the discussion in section titled "MIP table / table_id" in
 # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data
 standard_tres_to_mip_table = {
-    '1-minute': 'subhr', # frequency std
-    '2-minute': 'subhr', # frequency std
-    '5-minute': 'subhr', # frequency std
-    '15-minute': 'subhr', # frequency std
-    '30-minute': 'subhr', # frequency std
-    '1-hourly': '1hr', # custom: neither a MIP table nor a frequency standard term
-    '3-hourly': '3hr', # frequency std
-    '6-hourly': '6hr', # frequency std
-    '12-hourly': '12hr', # custom: neither a MIP table nor a frequency standard term
-    'daily': 'day', # MIP table and frequency standard
-    'monthly': 'mon', # frequency std
-    'yearly': 'yr', # frequency std
+    '1-minute': 'subhr',  # frequency std
+    '2-minute': 'subhr',  # frequency std
+    '5-minute': 'subhr',  # frequency std
+    '15-minute': 'subhr',  # frequency std
+    '30-minute': 'subhr',  # frequency std
+    '1-hourly': '1hr',  # custom: neither a MIP table nor a frequency standard term
+    '3-hourly': '3hr',  # frequency std
+    '6-hourly': '6hr',  # frequency std
+    '12-hourly': '12hr',  # custom: neither a MIP table nor a frequency standard term
+    'daily': 'day',  # MIP table and frequency standard
+    'monthly': 'mon',  # frequency std
+    'yearly': 'yr',  # frequency std
 }
 
 
 def cmor_type_filename(extension='', **component_values):
     """Return a filename built from supplied component values, following the a CMOR-based filename standards in
-    https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data    .
+    https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data
 
     Produces a CMOR standard filename if all and only required CMOR filename components are defined.
     Omits any components not in list of component names. Omits any component with a None value.
@@ -55,7 +55,8 @@ def cmor_type_filename(extension='', **component_values):
         geo_info
     '''.split()
     # ... if they are defined in component_values
-    return '_'.join(component_values[cname] for cname in component_names if component_values.get(cname, None) != None) \
+    return '_'.join(component_values[cname] for cname in component_names 
+                    if component_values.get(cname, None) is not None) \
            + extension
 
 
@@ -92,11 +93,11 @@ def _replace_commas(s, sep='+'):
 def _cmor_formatted_time_range(t_min, t_max, time_resolution='daily'):
     """Format a time range as string in YYYY[mm[dd]] format, min and max separated by a dash."""
     try:
-        format = {'yearly': '%Y', 'monthly': '%Y%m', 'daily': '%Y%m%d'}[time_resolution]
+        fmt = {'yearly': '%Y', 'monthly': '%Y%m', 'daily': '%Y%m%d'}[time_resolution]
     except KeyError:
         raise ValueError("Cannot format a time range with resolution '{}' (only yearly, monthly or daily)"
                          .format(time_resolution))
-    return '{}-{}'.format(t_min.strftime(format), t_max.strftime(format))
+    return '{}-{}'.format(t_min.strftime(fmt), t_max.strftime(fmt))
 
 
 def _indirection_info(value):
@@ -204,7 +205,8 @@ class CFDataset(Dataset):
             # ``getattr`` infinite recursion exception and prevents this method from raising it correctly.
             try:
                 super(CFDataset, self).__getattribute__(indirected_property)
-                return getattr(self, indirected_property)  # process indirect attribute normally, including indirection in it
+                # process indirect attribute normally, including indirection in it
+                return getattr(self, indirected_property)
             except AttributeError:
                 return value
         return value
@@ -325,7 +327,7 @@ class CFDataset(Dataset):
         return dim_name_to_axis
 
     def axes_dim(self, dim_names=None):
-        '''Return a dictionary mapping canonical axis names to specified dimension names (or all dimensions in file).
+        """Return a dictionary mapping canonical axis names to specified dimension names (or all dimensions in file).
         ASSUMPTION: There is at most one dimension (name) per canonical axis name. If not, the mapping inversion
         loses information.
         Canonical axis names are 'X' (longitude), 'Y' (latitude), 'Z' (level), 'S' (reduced XY grid), 'T' (time).
@@ -333,12 +335,12 @@ class CFDataset(Dataset):
 
         :param dim_names: (str) List of names of dimensions of interest, None for all dimensions in file
         :return: (dict) Dictionary mapping canonical axis name to dimension name, for specified dimension names
-        '''
+        """
         # Invert {dim_name: axis} to {axis: dim_name}
         return {axis: dim_name for dim_name, axis in self.dim_axes(dim_names).items()}
 
     def reduced_dims(self, var_name=None):
-        '''Return a dict containing the names of the X and Y dimensions of the named reduced spatial variable.
+        """Return a dict containing the names of the X and Y dimensions of the named reduced spatial variable.
          If the named variable is not attributed as a reduced variable, return an empty dict.
          If the number of reduced dimensions is not 2, raise an error.
 
@@ -347,9 +349,9 @@ class CFDataset(Dataset):
 
         :param var_name: (str) name of reduced spatial variable
         :return:
-        '''
+        """
         axes_dim = self.axes_dim()
-        if not 'S' in axes_dim:
+        if 'S' not in axes_dim:
             return {}
         compressed_axis_names = self.variables[var_name].compress.split()
         if len(compressed_axis_names) != 2:
@@ -357,7 +359,6 @@ class CFDataset(Dataset):
                              .format(var_name, compressed_axis_names))
         # TODO: Verify that compressed axis names are always in the order Y, X
         return {'X': compressed_axis_names[1], 'Y': compressed_axis_names[0]}
-
 
     @property
     def climatology_bounds_var_name(self):
@@ -377,7 +378,8 @@ class CFDataset(Dataset):
     def is_multi_year_mean(self):
         """True if the metadata indicates that the data consists of a multi-year mean,
         i.e., if the file contains a climatological time bounds variable.
-        See http://cfconventions.org/Data/cf-conventions/cf-conventions-1.6/build/cf-conventions.html#climatological-statistics,
+        See http://cfconventions.org/Data/cf-conventions/cf-conventions-1.6/build/
+        cf-conventions.html#climatological-statistics,
         section 7.4"""
         return bool(self.climatology_bounds_var_name)
 
@@ -461,7 +463,7 @@ class CFDataset(Dataset):
     @property
     def time_resolution(self):
         """A standard string that describes the time resolution of the file"""
-        #if self.is_multi_year_mean:
+        # if self.is_multi_year_mean:
         #    return 'other'
         return resolution_standard_name(self.time_step_size)
 
@@ -489,7 +491,6 @@ class CFDataset(Dataset):
                 [(3*values[-1] - values[-2]) / 2]   # fake upper "midpoint", half of previous step above last value
             )
             return zip(midpoints[:-1], values, midpoints[1:])
-
 
     def var_range(self, var_name):
         """Return minimum and maximum value taken by variable (over all dimensions).
@@ -582,7 +583,8 @@ class CFDataset(Dataset):
 
     @property
     def is_hydromodel_iobs_output(self):
-        """True iff the content of the file is output of a hydrological model forced by interpolated observational data."""
+        """True iff the content of the file is output of a hydrological model forced by
+        interpolated observational data."""
         return self.is_hydromodel_output and self.forcing_type == 'gridded observations'
 
     @property
@@ -592,7 +594,7 @@ class CFDataset(Dataset):
         Really rudimentary decision making about model type.
         """
         if self.metadata.project == 'NARCCAP' or \
-                        self.metadata.project not in ('IPCC Fourth Assessment', 'CMIP5'):
+                self.metadata.project not in ('IPCC Fourth Assessment', 'CMIP5'):
             return 'RCM'
         else:
             return 'GCM'
@@ -667,7 +669,7 @@ class CFDataset(Dataset):
             # needs. Instead we map the file's time resolution to a value.
             components.update(
                 time_range=self.time_range_formatted,
-                mip_table = tres_to_mip_table and tres_to_mip_table.get(self.time_resolution, None)
+                mip_table=tres_to_mip_table and tres_to_mip_table.get(self.time_resolution, None)
             )
 
         if self.is_unprocessed_gcm_output:
