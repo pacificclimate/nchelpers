@@ -642,27 +642,13 @@ class CFDataset(Dataset):
     @property
     def ensemble_member(self):
         """CMIP5 standard ensemble member code for this file"""
-        if self.is_unprocessed_gcm_output:
-            prefix = ''
-        elif self.is_downscaled_output:
-            prefix = 'driving_'
-        elif self.is_hydromodel_dgcm_output:
-            prefix = 'forcing_driving_'
-        elif self.is_hydromodel_iobs_output:
-            raise ValueError('ensemble_member has no meaning for a hydrological model forced by observational data')
-        else:
-            raise ValueError('cannot generate ensemble_member for a file without a recognized type')
-        
         components = {}
         for component, attr in [
             ('r', 'realization'),
             ('i', 'initialization_method'),
             ('p', 'physics_version')
         ]:
-            try:
-                components[component] = getattr(self, prefix + attr)
-            except AttributeError:
-                raise AttributeError("Attribute '{}' not found".format(prefix + attr))
+            components[component] = getattr(self.prefixed, attr)
         return 'r{r}i{i}p{p}'.format(**components)
 
     def _cmor_type_filename_components(self, tres_to_mip_table=standard_tres_to_mip_table, **override):
