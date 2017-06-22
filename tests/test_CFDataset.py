@@ -135,8 +135,8 @@ def test_simple_property(tiny_dataset, prop, expected):
     ('climo_gcm', 'physics_version', 1),
     ('climo_gcm', 'realization', 1),
 ], indirect=['tiny_dataset'])
-def test_prefixed_simple_property(tiny_dataset, prop, expected):
-    assert getattr(tiny_dataset.prefixed, prop) == expected
+def test_gcm_simple_property(tiny_dataset, prop, expected):
+    assert getattr(tiny_dataset.gcm, prop) == expected
 
 
 @mark.parametrize('tiny_dataset, prop, expected', [

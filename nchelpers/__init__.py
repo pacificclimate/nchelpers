@@ -531,11 +531,11 @@ class CFDataset(Dataset):
             },
             'model': {
                 'CMIP3': 'source',
-                'CMIP5': 'prefixed.model_id',
+                'CMIP5': 'gcm.model_id',
             },
             'emissions': {
                 'CMIP3': 'experiment_id',
-                'CMIP5': 'prefixed.experiment_id',
+                'CMIP5': 'gcm.experiment_id',
             },
             'run': {
                 'CMIP3': 'realization',
@@ -548,7 +548,7 @@ class CFDataset(Dataset):
             },
             'experiment': {
                 'CMIP3': 'experiment_id',
-                'CMIP5': 'prefixed.experiment_id',
+                'CMIP5': 'gcm.experiment_id',
             },
             'ensemble_member': {
                 'CMIP3': 'realization',
@@ -622,15 +622,18 @@ class CFDataset(Dataset):
         else:
             return 'GCM'
 
-    class AutoPrefix(object):
-        """Add an automatically computed prefix to a base property name before accessing it.
-        Prefix is based on the content of the file.
+    class AutoGcmPrefixedAttribute(object):
+        """Access attributes describing the original GCM input data used by the program that generated this file.
+        In downstream processing of GCM files (e.g., downscaling), attributes describing the input GCM
+        (e.g., 'model_id') are recorded in the output file with prefixes (e.g., 'driving_').
+        This class adds an automatically computed prefix to a base property name before accessing it.
+        Type of file, and therefore prefix, is determined from the content of the file.
+        NOTE: This class will prefix any base attribute name, no matter whether it is valid.
         """
         def __init__(self, dataset):
-            self.dataset = dataset
+            self.__dict__['dataset'] = dataset
 
-        def __getattr__(self, attr):
-            """CMIP5 standard ensemble member code for this file"""
+        def _prefixed(self, attr):
             if self.dataset.is_unprocessed_gcm_output:
                 prefix = ''
             elif self.dataset.is_downscaled_output:
@@ -638,20 +641,29 @@ class CFDataset(Dataset):
             elif self.dataset.is_hydromodel_dgcm_output:
                 prefix = 'forcing_driving_'
             elif self.dataset.is_hydromodel_iobs_output:
-                raise ValueError('ensemble_member has no meaning for a hydrological model forced by observational data')
+                raise AttributeError('GCM attributes have no meaning for a hydrological model forced by '
+                                     'observational data')
             else:
-                raise ValueError('cannot generate ensemble_member for a file without a recognized type')
+                raise AttributeError('Cannot generate automatic GCM attribute prefixes for a file '
+                                     'without a recognized type')
 
-            prefixed_attr = prefix + attr
+            return prefix + attr
+
+        def __getattr__(self, attr):
+            prefixed_attr = self._prefixed(attr)
             try:
                 return getattr(self.dataset, prefixed_attr)
-            except:
+            except AttributeError:
                 raise AttributeError("Expected file to contain attribute '{}' but no such attribute exists"
-                                     .format(prefixed_attr))
+                                     .format(self._prefixed(attr)))
+
+        def __setattr__(self, attr, value):
+            prefixed_attr = self._prefixed(attr)
+            return setattr(self.dataset, prefixed_attr, value)
 
     @property
-    def prefixed(self):
-        return self.AutoPrefix(self)
+    def gcm(self):
+        return self.AutoGcmPrefixedAttribute(self)
 
     @property
     def climo_periods(self):
@@ -674,7 +686,7 @@ class CFDataset(Dataset):
             ('i', 'initialization_method'),
             ('p', 'physics_version')
         ]:
-            components[component] = getattr(self.prefixed, attr)
+            components[component] = getattr(self.gcm, attr)
         return 'r{r}i{i}p{p}'.format(**components)
 
     def _cmor_type_filename_components(self, tres_to_mip_table=standard_tres_to_mip_table, **override):
