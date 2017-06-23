@@ -107,23 +107,70 @@ def test_simple_property(tiny_dataset, prop, expected):
 
 
 @mark.parametrize('tiny_dataset, prop, expected', [
+    ('gcm', 'institute_id', 'BNU'),
+    ('gcm', 'model_id', 'BNU-ESM'),
+    ('gcm', 'experiment_id', 'historical'),
+    ('gcm', 'initialization_method', 1),
+    ('gcm', 'physics_version', 1),
+    ('gcm', 'realization', 1),
+
+    ('downscaled', 'institute_id', 'CSIRO-BOM'),
+    ('downscaled', 'model_id', 'ACCESS1-0'),
+    ('downscaled', 'experiment_id', 'historical, rcp45'),
+    ('downscaled', 'initialization_method', 1),
+    ('downscaled', 'physics_version', 1),
+    ('downscaled', 'realization', 1),
+
+    ('hydromodel_gcm', 'institute_id', 'CSIRO-BOM'),
+    ('hydromodel_gcm', 'model_id', 'ACCESS1-0'),
+    ('hydromodel_gcm', 'experiment_id', 'historical, rcp45'),
+    ('hydromodel_gcm', 'initialization_method', 1),
+    ('hydromodel_gcm', 'physics_version', 1),
+    ('hydromodel_gcm', 'realization', 1),
+
+    ('climo_gcm', 'institute_id', 'BNU'),
+    ('climo_gcm', 'model_id', 'BNU-ESM'),
+    ('climo_gcm', 'experiment_id', 'historical'),
+    ('climo_gcm', 'initialization_method', 1),
+    ('climo_gcm', 'physics_version', 1),
+    ('climo_gcm', 'realization', 1),
+], indirect=['tiny_dataset'])
+def test_gcm_simple_property(tiny_dataset, prop, expected):
+    assert getattr(tiny_dataset.gcm, prop) == expected
+
+
+@mark.parametrize('tiny_dataset, prop, expected', [
     ('gcm', 'project', 'CMIP5'),
     ('gcm', 'institution', 'BNU'),
     ('gcm', 'model', 'BNU-ESM'),
     ('gcm', 'emissions', 'historical'),
+    ('gcm', 'experiment', 'historical'),
     ('gcm', 'run', 'r1i1p1'),
+    ('gcm', 'ensemble_member', 'r1i1p1'),
     
     ('downscaled', 'project', 'CMIP5'),
     ('downscaled', 'institution', 'PCIC'),
-    
+    ('downscaled', 'model', 'ACCESS1-0'),
+    ('downscaled', 'emissions', 'historical, rcp45'),
+    ('downscaled', 'experiment', 'historical, rcp45'),
+    ('downscaled', 'run', 'r1i1p1'),
+    ('downscaled', 'ensemble_member', 'r1i1p1'),
+
     ('hydromodel_gcm', 'project', 'CMIP5'),
     ('hydromodel_gcm', 'institution', 'PCIC'),
+    ('hydromodel_gcm', 'model', 'ACCESS1-0'),
+    ('hydromodel_gcm', 'emissions', 'historical, rcp45'),
+    ('hydromodel_gcm', 'experiment', 'historical, rcp45'),
+    ('hydromodel_gcm', 'run', 'r1i1p1'),
+    ('hydromodel_gcm', 'ensemble_member', 'r1i1p1'),
 
     ('climo_gcm', 'project', 'CMIP5'),
     ('climo_gcm', 'institution', 'BNU'),
     ('climo_gcm', 'model', 'BNU-ESM'),
     ('climo_gcm', 'emissions', 'historical'),
+    ('climo_gcm', 'experiment', 'historical'),
     ('climo_gcm', 'run', 'r1i1p1'),
+    ('climo_gcm', 'ensemble_member', 'r1i1p1'),
 ], indirect=['tiny_dataset'])
 def test_metadata_simple_property(tiny_dataset, prop, expected):
     assert getattr(tiny_dataset.metadata, prop) == expected
