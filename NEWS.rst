@@ -1,6 +1,18 @@
 News / Release Notes
 ====================
 
+1.0.5
+-----
+
+*Release Date: 27-Jun-2017*
+
+* Adds 'gcm' property, which automatically adds appropriate prefix to dataset attribute name
+  to access the attributes describing the original GCM input data used by the program that
+  generated the file.
+* Uses 'gcm' auto-prefix properties for 'metadata' properties so that they are valid across
+  all PCIC standard data files (not just GCM output).
+* Makes code entirely PEP8 compliant.
+
 1.0.4
 -----
 
