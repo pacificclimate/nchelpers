@@ -87,12 +87,11 @@ from nchelpers.date_utils import time_to_seconds
     #   time_range
     #   time_range_formatted
     #   time_step_size
-    #   time_resolution
     ('climo_gcm', 'first_MiB_md5sum', 'b9ce45acbefae185fbbc4028e57e6758'),
     ('climo_gcm', 'md5', 'b9ce45acbefae185fbbc4028e57e6758'),
     ('climo_gcm', 'climatology_bounds_var_name', 'climatology_bnds'),
     ('climo_gcm', 'is_multi_year_mean', True),
-    ('climo_gcm', 'time_resolution', 'monthly'), # not that this is very meaningful for a climo file
+    ('climo_gcm', 'time_resolution', 'monthly,seasonal,annual'),
     ('climo_gcm', 'is_unprocessed_gcm_output', True), # actually so, though the term 'unprocessed' here is misleading
     ('climo_gcm', 'is_downscaled_output', False),
     ('climo_gcm', 'is_hydromodel_output', False),
