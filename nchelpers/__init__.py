@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import dateutil.parser
 import hashlib
 import re
@@ -8,7 +8,7 @@ import numpy as np
 import six
 
 from netCDF4 import Dataset, num2date, date2num
-from nchelpers.date_utils import resolution_standard_name, time_to_seconds, d2ss
+from nchelpers.date_utils import time_scale, resolution_standard_name, time_to_seconds, d2ss
 from nchelpers.decorators import prevent_infinite_recursion
 
 # Map of nchelpers time resolution strings to MIP table names, standard where possible.
@@ -360,28 +360,136 @@ class CFDataset(Dataset):
         # TODO: Verify that compressed axis names are always in the order Y, X
         return {'X': compressed_axis_names[1], 'Y': compressed_axis_names[0]}
 
-    @property
-    def climatology_bounds_var_name(self):
-        """Return the name of the climatological time bounds variable, None if no such variable exists"""
+    def get_climatology_bounds_var_name(self, strict=False):
+        """Return the name of the climatological time bounds variable, None if no such variable exists.
+
+        :param strict (bool): If True, use strict rules only for identifying climatology bounds variable.
+            Otherwise, use heuristics as well.
+        """
+
+        # Strict rules begin here
+
         axes = self.axes_dim()
         if 'T' in axes:
-            time_axis = axes['T']
+            time_axis_name = axes['T']
         else:
+            # If there is no time axis, there are no climo bounds. Fail.
             return None
 
+        time_axis = self.variables[time_axis_name]
+
+        # If time:climatology attribute exists, use it.
         try:
-            return self.variables[time_axis].climatology
+            return time_axis.climatology
         except AttributeError:
-            return None
+            if strict:
+                return None
 
-    @property
-    def is_multi_year_mean(self):
-        """True if the metadata indicates that the data consists of a multi-year mean,
+        # Non-strict heuristics begin here
+
+        # Heuristic: A variable with a likely name exists
+        for name in ['climatology_bounds', 'climatology_bnds', 'climo_bounds', 'climo_bnds']:
+            if name in self.variables:
+                return name
+
+        def multi_year_bounds(time_bounds):
+            """Return True iff the each time bound spans at least 2 years.
+            Note: 2 years is small, but test code uses relatively short multi-year means.
+            """
+            scale = time_scale(time_bounds)
+            return all(
+                time_to_seconds(end_time, scale) - time_to_seconds(start_time, scale) >= time_to_seconds(720, 'days')
+                for start_time, end_time in time_bounds[:]
+            )
+
+        # Heuristic: Time variable has 'bounds' (not 'climatology') attribute identifying an existing variable
+        # AND that time bounds variable brackets multi-year periods (corresponding to the climatological averaging)
+        try:
+            time_bounds_name = time_axis.bounds
+        except AttributeError:
+            pass  # try next heuristic
+        else:
+            time_bounds = self.variables[time_bounds_name]
+            if multi_year_bounds(time_bounds):
+                return time_bounds_name
+
+        # Heuristic: Variable with name 'time_bounds' or 'time_bnds' exists (but not identified by time:bounds)
+        # AND that time bounds variable brackets multi-year periods (corresponding to the climatological averaging)
+        for time_bounds_name in ['time_bounds', 'time_bnds']:
+            if time_bounds_name in self.variables:
+                time_bounds = self.variables[time_bounds_name]
+                if multi_year_bounds(time_bounds):
+                    return time_bounds_name
+
+        # Alas
+        return None
+
+    climatology_bounds_var_name = property(get_climatology_bounds_var_name)
+
+    def get_is_multi_year_mean(self, strict=False):
+        """Return True if the metadata indicates that the data consists of a multi-year mean,
         i.e., if the file contains a climatological time bounds variable.
+
         See http://cfconventions.org/Data/cf-conventions/cf-conventions-1.6/build/
         cf-conventions.html#climatological-statistics,
-        section 7.4"""
-        return bool(self.climatology_bounds_var_name)
+        section 7.4
+
+        In non-strice mode, failing metadata that conforms to the above standard, we use heuristics.
+        These heuristics are emobodied here and in `get_climatology_bounds_var_name` in non-strict mode.
+
+        :param strict (bool): If True, use strict rules only for determining if this file contains multi-year means.
+            Otherwise, use heuristics as well.
+        """
+
+        # Strict and non-strict rules, according to flag
+        if self.get_climatology_bounds_var_name(strict=strict):
+            return True
+
+        # Strict rules begin here
+        if strict:
+            return False
+
+        # Additional non-strict heuristics begin here
+        
+        # Heuristic: Time variable has "suspicious" length: 1, 4, 12, 5, 13, 16, 17 (yearly, seasonal, monthly, and
+        # various concatenations thereof) 
+        # AND time variable has likely values (mid-month, mid-season, mid-year)
+
+        def check_monthly(time_steps):
+            def check(t, month):
+                return t.month == month and t.day in {14, 15, 16}
+            return all(check(next(time_steps), month) for month in range(1, 13))
+
+        def check_seasonal(time_steps):
+            def check(t, month):
+                return t.month == month and t.day in {15, 16, 17}
+            return all(check(next(time_steps), month) for month in (1, 4, 7, 10))
+
+        def check_yearly(time_steps):
+            t = next(time_steps)
+            return (t.month == 6 and t.day == 30) or (t.month == 7 and t.day in {1, 2})
+
+        try:
+            check_intervals = {
+                1: (check_yearly,),
+                4: (check_seasonal,),
+                12: (check_monthly,),
+                5: (check_seasonal, check_yearly),
+                13: (check_monthly, check_yearly),
+                16: (check_monthly, check_seasonal),
+                17: (check_monthly, check_seasonal, check_yearly),
+            }[self.time_var.size]
+        except KeyError:
+            pass  # Try next heuristic
+        else:
+            time_steps = (t for t in self.time_steps['datetime'])
+            if all(check(time_steps) for check in check_intervals):
+                return True
+
+        # Alas
+        return False
+
+    is_multi_year_mean = property(get_is_multi_year_mean)
 
     @property
     def lat_var(self):
@@ -450,12 +558,7 @@ class CFDataset(Dataset):
     @cached_property
     def time_step_size(self):
         """Median of all intervals between successive timesteps in the file"""
-        time_var = self.time_var
-        match = re.match('(days|hours|minutes|seconds) since.*', time_var.units)
-        if match:
-            scale = match.groups()[0]
-        else:
-            raise ValueError("cf_units param must be a string of the form '<time units> since <reference time>'")
+        scale = time_scale(self.time_var)
         times = self.time_var_values
         median_difference = np.median(np.diff(times))
         return time_to_seconds(median_difference, scale)

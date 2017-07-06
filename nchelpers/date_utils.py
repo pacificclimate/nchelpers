@@ -1,5 +1,14 @@
 from datetime import datetime, date
 import collections
+import re
+
+
+def time_scale(time_var):
+    match = re.match('(days|hours|minutes|seconds) since.*', time_var.units)
+    if match:
+        return match.groups()[0]
+    else:
+        raise ValueError("cf_units param must be a string of the form '<time units> since <reference time>'")
 
 
 def resolution_standard_name(seconds):
