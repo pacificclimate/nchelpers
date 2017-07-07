@@ -115,7 +115,7 @@ likely_time_bounds_var_names = ['time_bounds', 'time_bnds']
 
 @mark.parametrize(
     'fake_nc_dataset, strict, var_name',
-    # Starred components in lists (`[..., *[], ...]`) would make this much tidier, but Py <3.5 doesn't support that.
+    # Starred components in lists would make this list construction much tidier, but Py <3.5 doesn't support that.
     [
         # Without time variable
         (nc_file_specs.without_time_var, False, None),
