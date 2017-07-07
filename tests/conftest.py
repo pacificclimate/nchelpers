@@ -1,6 +1,13 @@
+import sys
+import os
+
 from pytest import fixture
 from pkg_resources import resource_filename
+from netCDF4 import Dataset
 from nchelpers import CFDataset
+
+# Add helpers directory to pythonpath: See https://stackoverflow.com/a/33515264
+sys.path.append(os.path.join(os.path.dirname(__file__), 'helpers'))
 
 
 @fixture
@@ -14,6 +21,37 @@ def tiny_dataset(request):
     """
     filename = 'data/tiny_{}.nc'.format(request.param)
     return CFDataset(resource_filename('nchelpers', filename))
+
+
+@fixture(scope='function')
+def temp_nc(tmpdir_factory):
+    return str(tmpdir_factory.mktemp('temp').join('file.nc'))
+
+
+def make_fake_nc_dataset(filepath, spec):
+    nc = Dataset(filepath, mode='w')
+
+    if 'dimensions' in spec:
+        for name, size in spec['dimensions'].items():
+            nc.createDimension(name, size)
+
+    if 'variables' in spec:
+        for name, var_spec in spec['variables'].items():
+            variable = nc.createVariable(name, var_spec['datatype'], dimensions=var_spec['dimensions'])
+            if 'attrs' in var_spec:
+                for name, value in var_spec['attrs'].items():
+                    variable.setncattr(name, value)
+            if 'values' in var_spec:
+                for i, value in enumerate(var_spec['values']):
+                    variable[i] = value
+
+    nc.close()
+
+
+@fixture
+def fake_nc_dataset(request, temp_nc):
+    make_fake_nc_dataset(temp_nc, request.param)
+    return temp_nc
 
 
 @fixture

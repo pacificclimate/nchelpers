@@ -393,11 +393,11 @@ class CFDataset(Dataset):
                 return name
 
         def multi_year_bounds(time_bounds):
-            """Return True iff the each time bound spans at least 2 years.
+            """Return True iff time bounds is non-empty and each time bound spans at least 2 years.
             Note: 2 years is small, but test code uses relatively short multi-year means.
             """
             scale = time_scale(time_bounds)
-            return all(
+            return time_bounds.size > 0 and all(
                 time_to_seconds(end_time, scale) - time_to_seconds(start_time, scale) >= time_to_seconds(720, 'days')
                 for start_time, end_time in time_bounds[:]
             )
