@@ -369,18 +369,15 @@ class CFDataset(Dataset):
 
         # Strict rules begin here
 
-        axes = self.axes_dim()
-        if 'T' in axes:
-            time_axis_name = axes['T']
-        else:
-            # If there is no time axis, there are no climo bounds. Fail.
+        # If there is no time axis, there are no climo bounds. Fail.
+        try:
+            time_var = self.time_var
+        except ValueError:
             return None
-
-        time_axis = self.variables[time_axis_name]
 
         # If time:climatology attribute exists, use it.
         try:
-            return time_axis.climatology
+            return time_var.climatology
         except AttributeError:
             if strict:
                 return None
@@ -405,7 +402,7 @@ class CFDataset(Dataset):
         # Heuristic: Time variable has 'bounds' (not 'climatology') attribute identifying an existing variable
         # AND that time bounds variable brackets multi-year periods (corresponding to the climatological averaging)
         try:
-            time_bounds_name = time_axis.bounds
+            time_bounds_name = time_var.bounds
         except AttributeError:
             pass  # try next heuristic
         else:
@@ -440,9 +437,16 @@ class CFDataset(Dataset):
         :param strict (bool): If True, use strict rules only for determining if this file contains multi-year means.
             Otherwise, use heuristics as well.
         """
+        # If there is no time axis, this can't be a file of temporal means.
+        try:
+            time_var = self.time_var
+        except ValueError:
+            return False
 
         # Strict and non-strict rules, according to flag
         if self.get_climatology_bounds_var_name(strict=strict):
+            # TODO: Output of `get_climatology_bounds_var_name` does not necessarily exist in the file.
+            # Should we check for existence?
             return True
 
         # Strict rules begin here
@@ -478,7 +482,7 @@ class CFDataset(Dataset):
                 13: (check_monthly, check_yearly),
                 16: (check_monthly, check_seasonal),
                 17: (check_monthly, check_seasonal, check_yearly),
-            }[self.time_var.size]
+            }[time_var.size]
         except KeyError:
             pass  # Try next heuristic
         else:

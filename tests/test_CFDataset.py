@@ -21,7 +21,8 @@ from netCDF4 import num2date
 from nchelpers import CFDataset
 from nchelpers.date_utils import time_to_seconds
 
-import nc_file_specs
+from nc_file_specs import spec
+from time_values import suspicious_time_values, non_suspicious_time_values
 
 # TODO: Get a real GCM-driven hydromodel output file and adjust tiny_hydromodel_gcm.nc and its tests as necessary
 
@@ -110,86 +111,152 @@ def test_simple_property(tiny_dataset, prop, expected):
     assert getattr(tiny_dataset, prop) == expected
 
 
+# Setup for testing `get_climatology_bounds_var_name`
+# and `get_is_multi_year_mean`, which depends on `get_climatology_bounds_var_name`.
+#
+# These cases are shared between the two methods, so each case includes expected output for both.
+# Each test function ignores the other's expected output parameter.
+# Each tuple correspnods to the following arguments: 
+#   `(file_spec, strict, expected_climatology_bounds_var_name, expected_is_multi_year_mean)`
+#
+# The alert reader will note that in all current test cases,
+#   `expected_is_multi_year_mean == bool(expected_climatology_bounds_var_name)`
+# However, this is not necessarily so, and at least one potential refinement to `is_multi_year_mean` will
+# change this relationship. Hence the explicit distinction between the two values.
+
 likely_climo_bounds_var_names = ['climatology_bounds', 'climatology_bnds', 'climo_bounds', 'climo_bnds']
 likely_time_bounds_var_names = ['time_bounds', 'time_bnds']
 
-@mark.parametrize(
-    'fake_nc_dataset, strict, var_name',
-    # Starred components in lists would make this list construction much tidier, but Py <3.5 doesn't support that.
+# Use a non-"suspcicious" number of time values to prevent false positives from that heuristic.
+narrow_time_bounds = [[0, 10], [10, 20]]
+narrow_time_values = [5, 15]
+
+wide_time_bounds = [[0, 3650], [30, 3680]]
+wide_time_values = [1825, 1855]
+
+# Starred components in lists would make this list construction much tidier, but Py <3.5 doesn't support that.
+climo_bounds_var_test_cases = (
+    # Without time variable
     [
-        # Without time variable
-        (nc_file_specs.without_time_var, False, None),
-        (nc_file_specs.without_time_var, True, None),
+        ({}, strict, None, False)
+        for strict in [False, True]
+    ] +
 
-        # All subsequent tests with time variable ...
+    # All subsequent tests with time variable ...
 
-        # Without time:climatology or time:bounds attr; without bounds variable
-        (nc_file_specs.without_all, False, None),
-        (nc_file_specs.without_all, True, None),
+    # Without time:climatology or time:bounds attr; without bounds variable
+    [
+        (spec(tb_attr=None, tb_var_name=None, tb_values=None, t_values=None), strict, None, False)
+        for strict in [False, True]
+    ] +
 
-        # With time:climatology attr; without climo bounds variable
-        # Note: does not check existence of variable. Is this right?
-        (nc_file_specs.with_time_bounds_attr_without_bounds_var('climatology', 'foo'), False, 'foo'),
-        (nc_file_specs.with_time_bounds_attr_without_bounds_var('climatology', 'foo'), True, 'foo'),
+    # With time:climatology attr; without climo bounds variable
+    # Note: does not check existence of variable. Is this right?
+    [
+        (spec(tb_attr={'climatology': 'foo'}, tb_var_name=None, tb_values=None, t_values=None), strict, 'foo', True)
+        for strict in [False, True]
+    ] +
 
-
-        # With time:climatology attr; with climo bounds variable
-        # Use non-canonical bounds var name, to prevent false success with likely-name heuristic
-        (nc_file_specs.with_time_bounds_attr_with_bounds_var('climatology', 'foo'), False, 'foo'),
-        (nc_file_specs.with_time_bounds_attr_with_bounds_var('climatology', 'foo'), True, 'foo'),
+    # With time:climatology attr; with climo bounds variable
+    # Use non-canonical bounds var name, to prevent false success with likely-name heuristic
+    [
+        (spec(tb_attr={'climatology': 'foo'}, tb_var_name='foo', tb_values=None, t_values=None), False, 'foo', True)
+        for strict in [False, True]
     ] +
 
     # Without time:climatology or time:bounds attr; with likely named climo bounds variable
-    # Note: no checking of bounds variable contents
+    # Note: no checking of bounds variable contents. Is this right?
     [
-        (nc_file_specs.without_time_bounds_attr_with_bounds_var(name), False, name)
+        # Non-strict
+        (spec(tb_attr=None, tb_var_name=name, tb_values=None, t_values=None), False, name, True)
         for name in likely_climo_bounds_var_names
     ] +
     [
-        (nc_file_specs.without_time_bounds_attr_with_bounds_var(name), True, None)
+        # Strict
+        (spec(tb_attr=None, tb_var_name=name, tb_values=None, t_values=None), True, None, False)
         for name in likely_climo_bounds_var_names
     ] +
 
+    # Without time:climatology or time:bounds attr; without likely named climo bounds variable
     [
-        # Without time:climatology or time:bounds attr; without likely named climo bounds variable
-        (nc_file_specs.without_time_bounds_attr_with_bounds_var('foo'), False, None),
-        (nc_file_specs.without_time_bounds_attr_with_bounds_var('foo'), True, None),
+        (spec(tb_attr=None, tb_var_name='foo', tb_values=None, t_values=None), strict, None, False)
+        for strict in [False, True]
+    ] +
 
-        # With time:bounds attr; with time bounds too narrow (10 d < 2 yr)
-        (nc_file_specs.with_time_bounds_attr_with_bounds_var('bounds', 'foo', [[0, 10]]), False, None),
-        (nc_file_specs.with_time_bounds_attr_with_bounds_var('bounds', 'foo', [[0, 10]]), True, None),
+    # With time:bounds attr; with time bounds too narrow (< 2 yr)
+    [
+        (spec(tb_attr={'bounds': 'foo'}, tb_var_name='foo', tb_values=narrow_time_bounds, t_values=narrow_time_values), strict, None, False)
+        for strict in [False, True]
+    ] +
 
-        # With time:bounds attr; with time bounds broad enough (3650 d > 2 yr)
-        (nc_file_specs.with_time_bounds_attr_with_bounds_var('bounds', 'foo', [[0, 3650]]), False, 'foo'),
-        (nc_file_specs.with_time_bounds_attr_with_bounds_var('bounds', 'foo', [[0, 3650]]), True, None),
+    # With time:bounds attr; with time bounds broad enough (> 2 yr)
+    [
+        (spec(tb_attr={'bounds': 'foo'}, tb_var_name='foo', tb_values=wide_time_bounds, t_values=wide_time_values), False, 'foo', True),
+        (spec(tb_attr={'bounds': 'foo'}, tb_var_name='foo', tb_values=wide_time_bounds, t_values=wide_time_values), True, None, False),
     ] +
 
     # Without time:climatology or time:bounds attr; with likely named time bounds var;
     # with time bounds too narrow (10 d < 2 yr)
     [
-        (nc_file_specs.without_time_bounds_attr_with_bounds_var(name, [[0, 10]]), False, None)
+        (spec(tb_attr=None, tb_var_name=name, tb_values=narrow_time_bounds, t_values=narrow_time_values), strict, None, False)
         for name in likely_time_bounds_var_names
-    ] +
-    [
-        (nc_file_specs.without_time_bounds_attr_with_bounds_var(name, [[0, 10]]), True, None)
-        for name in likely_time_bounds_var_names
+        for strict in [False, True]
     ] +
 
     # Without time:climatology or time:bounds attr; with likely named time bounds var;
     # with time bounds broad enough (3650 d > 2 yr)
     [
-        (nc_file_specs.without_time_bounds_attr_with_bounds_var(name, [[0, 3650]]), False, name)
+        # Non-strict
+        (spec(tb_attr=None, tb_var_name=name, tb_values=wide_time_bounds, t_values=wide_time_values), False, name, True)
         for name in likely_time_bounds_var_names
     ] +
     [
-        (nc_file_specs.without_time_bounds_attr_with_bounds_var(name, [[0, 3650]]), True, None)
-      for name in likely_time_bounds_var_names
-    ],
+        # Strict
+        (spec(tb_attr=None, tb_var_name=name, tb_values=wide_time_bounds, t_values=wide_time_values), True, None, False)
+        for name in likely_time_bounds_var_names
+    ]
+)
+
+
+@mark.parametrize(
+    'fake_nc_dataset, strict, var_name, _',
+    climo_bounds_var_test_cases,
     indirect=['fake_nc_dataset']
 )
-def test_get_climatology_bounds_var_name(fake_nc_dataset, strict, var_name):
+def test_get_climatology_bounds_var_name(fake_nc_dataset, strict, var_name, _):
     cf = CFDataset(fake_nc_dataset)
     assert cf.get_climatology_bounds_var_name(strict=strict) == var_name
+
+
+@mark.parametrize(
+    'fake_nc_dataset, strict, _, is_mym',
+    # All the cases depending on climo bounds
+    climo_bounds_var_test_cases +
+
+    # Without time:climatology or time:bounds attrs; without variable with likely name for climo bounds;
+    # without variable with likely name for time bounds and likely contents;
+    # with time variable with suspicious length and contents
+    [
+        # Non-strict
+        (spec(tb_attr=None, tb_var_name=None, tb_values=None, t_values=t_values), False, None, True)
+        for t_values in suspicious_time_values
+    ] +
+    [
+        # Strict
+        (spec(tb_attr=None, tb_var_name=None, tb_values=None, t_values=t_values), True, None, False)
+        for t_values in suspicious_time_values
+    ] +
+    [
+        (spec(tb_attr=None, tb_var_name=None, tb_values=None, t_values=t_values), strict, None, False)
+        for t_values in non_suspicious_time_values
+        for strict in [False, True]
+    ]
+    ,
+    indirect=['fake_nc_dataset']
+)
+def test_get_is_multi_year_mean(fake_nc_dataset, strict, _, is_mym):
+    cf = CFDataset(fake_nc_dataset)
+    assert cf.get_is_multi_year_mean(strict=strict) == is_mym
 
 
 @mark.parametrize('tiny_dataset, prop, expected', [
