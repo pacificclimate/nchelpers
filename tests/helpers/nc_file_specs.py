@@ -37,25 +37,20 @@ def create_fake_nc_dataset(filepath, spec):
             }
         }
     """
-    print('\nmaking fake nc', filepath)
     nc = Dataset(filepath, mode='w')
 
     if 'dimensions' in spec:
         for name, size in spec['dimensions'].items():
-            print('dimension {} = {}'.format(name, size))
             nc.createDimension(name, size)
 
     if 'variables' in spec:
         for name, var_spec in spec['variables'].items():
-            print('variable {}{}'.format(name, var_spec['dimensions']))
             variable = nc.createVariable(name, var_spec['datatype'], dimensions=var_spec['dimensions'])
             if 'attrs' in var_spec and var_spec['attrs']:
                 for name, value in var_spec['attrs'].items():
-                    print('    attr {} = {}'.format(name, value))
                     variable.setncattr(name, value)
             if 'values' in var_spec and var_spec['values']:
                 for i, value in enumerate(var_spec['values']):
-                    print('    value[{}] = {}'.format(i, value))
                     variable[i] = value
 
     nc.close()
