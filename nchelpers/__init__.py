@@ -173,7 +173,7 @@ class CFDataset(Dataset):
     get_important_varnames -> dependent_varnames
     """
 
-    def __init__(self, *args, strict_metadata=False, **kwargs):
+    def __init__(self, *args, **kwargs):
         """Class constructor.
 
         :param strict_metadata (bool): If True, metadata is interpreted strictly, i.e., it is expected to
@@ -196,7 +196,7 @@ class CFDataset(Dataset):
         # Store options directly via dict to prevent them being treated as Dataset attributes.
         # It's possible that it would be better to define `__setattribute__` with a special case for this attr name,
         # complementary to `__getattribute__`.
-        self.__dict__['_cf_dataset_options'] = {'strict_metadata': strict_metadata}
+        self.__dict__['_cf_dataset_options'] = {'strict_metadata': kwargs.get('strict_metadata', False)}
 
     def is_indirected(self, name):
         """Return True iff the property named has an indirect value.
