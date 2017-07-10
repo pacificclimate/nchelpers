@@ -173,28 +173,60 @@ class CFDataset(Dataset):
     get_important_varnames -> dependent_varnames
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, strict_metadata=False, **kwargs):
+        """Class constructor.
+
+        :param strict_metadata (bool): If True, metadata is interpreted strictly, i.e., it is expected to
+            adhere to PCIC metadata standards and CF metadata standards.
+            Otherwise, heuristics are applied when an attempt to read or interpret metadata according to
+            standards fails.
+
+        Regarding `strict_metadata`, the precise meaning of 'heuristics are applied' depends on the property/method
+        in question. The following properties/methods have both strict and non-strict behaviours:
+
+        - `climatology_bounds_var_name`
+        - `is_multi_year_mean`
+
+        See docstrings for each prop/method for details of non-strict behaviour.
+
+        NOTE: Any code that depends on these methods, including other properties and methods in this class,
+        therefore also implicitly have both strict and non-strict behaviours.
+        """
         super(CFDataset, self).__init__(*args, **kwargs)
+        # Store options directly via dict to prevent them being treated as Dataset attributes.
+        # It's possible that it would be better to define `__setattribute__` with a special case for this attr name,
+        # complementary to `__getattribute__`.
+        self.__dict__['_cf_dataset_options'] = {'strict_metadata': strict_metadata}
 
     def is_indirected(self, name):
         """Return True iff the property named has an indirect value.
         See class docstring for explanation of indirect values.
+        Does not handle `_cf_dataset_options`, but that doesn't matter.
         """
         return _indirection_info(self.get_direct_value(name))[0]
 
     def get_direct_value(self, name):
         """Return the value of the named property without indirection processing.
         See class docstring for explanation of indirect values.
+        Does not handle `_cf_dataset_options`, but that doesn't matter.
         """
         return super(CFDataset, self).__getattribute__(name)
 
     @prevent_infinite_recursion
     def __getattribute__(self, name):
-        """Handle indirect values for properties.
-        See class docstring for explanation of indirect values.
+        """Handle special cases of attribute retrieval:
+
+        - Special attribute named `_cf_dataset_options`: A local attr. Do not delegate to super.
+        - Indirect values for properties. See class docstring for explanation of indirect values.
+        - Otherwise: Delegate to super.
 
         :param name: (str) name of attribute
         """
+        # Special attribute named `_cf_dataset_options`.
+        if name == '_cf_dataset_options':
+            return self.__dict__[name]
+
+        # Indirect value
         value = super(CFDataset, self).__getattribute__(name)  # cannot use ``getattr``, otherwise infinite recursion
         is_indirected, indirected_property = _indirection_info(value)
         if is_indirected:
@@ -209,6 +241,8 @@ class CFDataset(Dataset):
                 return getattr(self, indirected_property)
             except AttributeError:
                 return value
+
+        # Regular old value
         return value
 
     @property
@@ -360,13 +394,13 @@ class CFDataset(Dataset):
         # TODO: Verify that compressed axis names are always in the order Y, X
         return {'X': compressed_axis_names[1], 'Y': compressed_axis_names[0]}
 
-    def get_climatology_bounds_var_name(self, strict=False):
+    @property
+    def climatology_bounds_var_name(self):
         """Return the name of the climatological time bounds variable, None if no such variable exists.
 
-        :param strict (bool): If True, use strict rules only for identifying climatology bounds variable.
-            Otherwise, use heuristics as well.
+        If `self.options['strict_metadata']` is True, use strict rules only for identifying climatology bounds variable.
+        Otherwise, use heuristics as well.
         """
-
         # Strict rules begin here
 
         # If there is no time axis, there are no climo bounds. Fail.
@@ -379,7 +413,7 @@ class CFDataset(Dataset):
         try:
             return time_var.climatology
         except AttributeError:
-            if strict:
+            if self._cf_dataset_options['strict_metadata']:
                 return None
 
         # Non-strict heuristics begin here
@@ -421,9 +455,8 @@ class CFDataset(Dataset):
         # Alas
         return None
 
-    climatology_bounds_var_name = property(get_climatology_bounds_var_name)
-
-    def get_is_multi_year_mean(self, strict=False):
+    @property
+    def is_multi_year_mean(self):
         """Return True if the metadata indicates that the data consists of a multi-year mean,
         i.e., if the file contains a climatological time bounds variable.
 
@@ -434,8 +467,8 @@ class CFDataset(Dataset):
         In non-strice mode, failing metadata that conforms to the above standard, we use heuristics.
         These heuristics are emobodied here and in `get_climatology_bounds_var_name` in non-strict mode.
 
-        :param strict (bool): If True, use strict rules only for determining if this file contains multi-year means.
-            Otherwise, use heuristics as well.
+        If `self._cf_dataset_options['strict_metadata']` is True, use strict rules only for determining if this file contains
+        multi-year means. Otherwise, use heuristics as well.
         """
         # If there is no time axis, this can't be a file of temporal means.
         try:
@@ -444,13 +477,13 @@ class CFDataset(Dataset):
             return False
 
         # Strict and non-strict rules, according to flag
-        if self.get_climatology_bounds_var_name(strict=strict):
+        if self.climatology_bounds_var_name:
             # TODO: Output of `get_climatology_bounds_var_name` does not necessarily exist in the file.
             # Should we check for existence?
             return True
 
         # Strict rules begin here
-        if strict:
+        if self._cf_dataset_options['strict_metadata']:
             return False
 
         # Additional non-strict heuristics begin here
@@ -492,8 +525,6 @@ class CFDataset(Dataset):
 
         # Alas
         return False
-
-    is_multi_year_mean = property(get_is_multi_year_mean)
 
     @property
     def lat_var(self):
