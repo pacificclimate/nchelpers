@@ -5,10 +5,7 @@ from pytest import fixture
 from pkg_resources import resource_filename
 from nchelpers import CFDataset
 
-# Add helpers directory to pythonpath: See https://stackoverflow.com/a/33515264
-sys.path.append(os.path.join(os.path.dirname(__file__), 'helpers'))
-
-from nc_file_specs import create_fake_nc_dataset
+from .helpers.nc_file_specs import create_fake_nc_dataset
 
 
 @fixture

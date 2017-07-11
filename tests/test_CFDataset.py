@@ -21,8 +21,8 @@ from netCDF4 import num2date
 from nchelpers import CFDataset
 from nchelpers.date_utils import time_to_seconds
 
-from nc_file_specs import spec
-from time_values import suspicious_time_values, non_suspicious_time_values
+from .helpers.nc_file_specs import spec
+from .helpers.time_values import suspicious_time_values, non_suspicious_time_values
 
 # TODO: Get a real GCM-driven hydromodel output file and adjust tiny_hydromodel_gcm.nc and its tests as necessary
 
