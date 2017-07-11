@@ -435,11 +435,8 @@ class CFDataset(Dataset):
 
         # Heuristic: Time variable has 'bounds' (not 'climatology') attribute identifying an existing variable
         # AND that time bounds variable brackets multi-year periods (corresponding to the climatological averaging)
-        try:
+        if hasattr(time_var, 'bounds'):
             time_bounds_name = time_var.bounds
-        except AttributeError:
-            pass  # try next heuristic
-        else:
             time_bounds = self.variables[time_bounds_name]
             if multi_year_bounds(time_bounds):
                 return time_bounds_name
@@ -464,7 +461,7 @@ class CFDataset(Dataset):
         cf-conventions.html#climatological-statistics,
         section 7.4
 
-        In non-strice mode, failing metadata that conforms to the above standard, we use heuristics.
+        In non-strict mode, failing metadata that conforms to the above standard, we use heuristics.
         These heuristics are emobodied here and in `get_climatology_bounds_var_name` in non-strict mode.
 
         If `self._cf_dataset_options['strict_metadata']` is True, use strict rules only for determining if this file contains
@@ -517,7 +514,7 @@ class CFDataset(Dataset):
                 17: (check_monthly, check_seasonal, check_yearly),
             }[time_var.size]
         except KeyError:
-            pass  # Try next heuristic
+            pass  # No suspcious lengths: Try next heuristic
         else:
             time_steps = (t for t in self.time_steps['datetime'])
             if all(check(time_steps) for check in check_intervals):
