@@ -136,41 +136,41 @@ wide_time_values = [1825, 1855]
 
 # Starred components in lists would make this list construction much tidier, but Py <3.5 doesn't support that.
 climo_bounds_var_test_cases = (
-    # # Without time variable
-    # [
-    #     ({}, strict, None, False)
-    #     for strict in [False, True]
-    # ] +
-    #
-    # # All subsequent tests with time variable ...
-    #
-    # # Without time:climatology or time:bounds attr; without bounds variable
-    # [
-    #     (spec(tb_attr=None, tb_var_name=None, tb_values=None, t_values=None), strict, None, False)
-    #     for strict in [False, True]
-    # ] +
-    #
-    # # With time:climatology attr; without climo bounds variable
-    # # Note: does not check existence of variable. Is this right?
-    # [
-    #     (spec(tb_attr={'climatology': 'foo'}, tb_var_name=None, tb_values=None, t_values=None), strict, 'foo', True)
-    #     for strict in [False, True]
-    # ] +
-    #
-    # # With time:climatology attr; with climo bounds variable
-    # # Use non-canonical bounds var name, to prevent false success with likely-name heuristic
-    # [
-    #     (spec(tb_attr={'climatology': 'foo'}, tb_var_name='foo', tb_values=None, t_values=None), False, 'foo', True)
-    #     for strict in [False, True]
-    # ] +
-    #
-    # # Without time:climatology or time:bounds attr; with likely named climo bounds variable
-    # # Note: no checking of bounds variable contents. Is this right?
-    # [
-    #     # Non-strict
-    #     (spec(tb_attr=None, tb_var_name=name, tb_values=None, t_values=None), False, name, True)
-    #     for name in likely_climo_bounds_var_names
-    # ] +
+    # Without time variable
+    [
+        ({}, strict, None, False)
+        for strict in [False, True]
+    ] +
+
+    # All subsequent tests with time variable ...
+
+    # Without time:climatology or time:bounds attr; without bounds variable
+    [
+        (spec(tb_attr=None, tb_var_name=None, tb_values=None, t_values=None), strict, None, False)
+        for strict in [False, True]
+    ] +
+
+    # With time:climatology attr; without climo bounds variable
+    # Note: does not check existence of variable. Is this right?
+    [
+        (spec(tb_attr={'climatology': 'foo'}, tb_var_name=None, tb_values=None, t_values=None), strict, 'foo', True)
+        for strict in [False, True]
+    ] +
+
+    # With time:climatology attr; with climo bounds variable
+    # Use non-canonical bounds var name, to prevent false success with likely-name heuristic
+    [
+        (spec(tb_attr={'climatology': 'foo'}, tb_var_name='foo', tb_values=None, t_values=None), False, 'foo', True)
+        for strict in [False, True]
+    ] +
+
+    # Without time:climatology or time:bounds attr; with likely named climo bounds variable
+    # Note: no checking of bounds variable contents. Is this right?
+    [
+        # Non-strict
+        (spec(tb_attr=None, tb_var_name=name, tb_values=None, t_values=None), False, name, True)
+        for name in likely_climo_bounds_var_names
+    ] +
     [
         # Strict
         (spec(tb_attr=None, tb_var_name=name, tb_values=None, t_values=None), True, None, False)
