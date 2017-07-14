@@ -4,23 +4,28 @@ import collections
 
 def resolution_standard_name(seconds):
     '''Return a standard descriptive string given a time resolution in seconds'''
-    return {
-        60: '1-minute',
-        120: '2-minute',
-        300: '5-minute',
-        900: '15-minute',
-        1800: '30-minute',
-        3600: '1-hourly',
-        10800: '3-hourly',
-        21600: '6-hourly',
-        43200: '12-hourly',
-        86400: 'daily',
-        2678400: 'monthly',
-        2635200: 'monthly',
-        2592000: 'monthly',
-        31536000: 'yearly',
-        31104000: 'yearly',
-    }.get(seconds, 'other')
+    for m in [1, 2, 5, 15, 30]:
+        if seconds == time_to_seconds(m, 'minutes'):
+            return '{}-minute'.format(m)
+    for h in [1, 3, 6, 12]:
+        if seconds == time_to_seconds(h, 'hours'):
+            return '{}-hourly'.format(h)
+    if seconds == time_to_seconds(1, 'days'):
+        return 'daily'
+    # A month can have between 28 and 31 days in it, depending on calendar and leap-yearness.
+    # To simplify processing of median values, allow any value between these limits even though the actual
+    # possible set is relatively small (but hard to precompute).
+    if time_to_seconds(28, 'days') <= seconds <= time_to_seconds(31, 'days'):
+        return 'monthly'
+    # A season can have between 88 and 92 days in it, depending on calendar and leap-yearness.
+    # To simplify processing of median values, allow any value between these limits even though the actual
+    # possible set is relatively small (but hard to precompute).
+    if time_to_seconds(88, 'days') <= seconds <= time_to_seconds(92, 'days'):
+        return 'seasonal'
+    for d in [360, 365, 366]:
+        if seconds == time_to_seconds(d, 'days'):
+            return 'yearly'
+    return 'other'
 
 
 def time_to_seconds(x, units='seconds'):

@@ -463,8 +463,15 @@ class CFDataset(Dataset):
     @property
     def time_resolution(self):
         """A standard string that describes the time resolution of the file"""
-        # if self.is_multi_year_mean:
-        #    return 'other'
+        if self.is_multi_year_mean:
+            return {
+                12: 'monthly',
+                4: 'seasonal',
+                1: 'yearly',
+                5: 'seasonal,yearly',
+                13: 'monthly,yearly',
+                17: 'monthly,seasonal,yearly',
+            }.get(self.time_var.size, 'other')
         return resolution_standard_name(self.time_step_size)
 
     def var_bounds_and_values(self, var_name, bounds_var_name=None):
