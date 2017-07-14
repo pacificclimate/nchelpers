@@ -467,10 +467,10 @@ class CFDataset(Dataset):
             return {
                 12: 'monthly',
                 4: 'seasonal',
-                1: 'annual',
-                5: 'seasonal,annual',
-                13: 'monthly,annual',
-                17: 'monthly,seasonal,annual',
+                1: 'yearly',
+                5: 'seasonal,yearly',
+                13: 'monthly,yearly',
+                17: 'monthly,seasonal,yearly',
             }.get(self.time_var.size, 'other')
         return resolution_standard_name(self.time_step_size)
 

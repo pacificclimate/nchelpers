@@ -24,7 +24,7 @@ def resolution_standard_name(seconds):
         return 'seasonal'
     for d in [360, 365, 366]:
         if seconds == time_to_seconds(d, 'days'):
-            return 'annual'
+            return 'yearly'
     return 'other'
 
 
