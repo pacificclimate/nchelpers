@@ -9,6 +9,21 @@ from .helpers.nc_file_specs import create_fake_nc_dataset
 
 
 @fixture
+def dataset(request):
+    """Return a test dataset, based on request param.
+
+    request.param: (str) selects the test file to be returned
+    returns: (nchelpers.CFDataset) test file as a CFDataset object
+
+    This fixture should be invoked with indirection.
+
+    If you're testing with tiny_ datasets, use the fixture `tiny_dataset`.
+    """
+    filename = 'data/{}.nc'.format(request.param)
+    return CFDataset(resource_filename('nchelpers', filename))
+
+
+@fixture
 def tiny_dataset(request):
     """Return a 'tiny' test dataset, based on request param.
 
