@@ -264,7 +264,6 @@ def test_is_multi_year_mean(fake_nc_dataset, strict, _, is_mym):
 # faked nc datasets above.
 @mark.parametrize('dataset, is_mym', [
     ('CanESM2-rcp85-tasmax-r1i1p1-2010-2039', True),
-    mark.xfail(('cgcm', True), reason='Still settling spec'),
     ('prism_pr_small', True),
 ], indirect=['dataset'])
 def test_is_multi_year_mean_against_nonstandard_datasets(dataset, is_mym):
