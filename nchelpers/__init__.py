@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import dateutil.parser
 import hashlib
 import re
@@ -8,7 +8,7 @@ import numpy as np
 import six
 
 from netCDF4 import Dataset, num2date, date2num
-from nchelpers.date_utils import resolution_standard_name, time_to_seconds, d2ss
+from nchelpers.date_utils import time_scale, resolution_standard_name, time_to_seconds, d2ss
 from nchelpers.decorators import prevent_infinite_recursion
 
 # Map of nchelpers time resolution strings to MIP table names, standard where possible.
@@ -174,27 +174,59 @@ class CFDataset(Dataset):
     """
 
     def __init__(self, *args, **kwargs):
+        """Class constructor.
+
+        :param strict_metadata (bool): If True, metadata is interpreted strictly, i.e., it is expected to
+            adhere to PCIC metadata standards and CF metadata standards.
+            Otherwise, heuristics are applied when an attempt to read or interpret metadata according to
+            standards fails.
+
+        Regarding `strict_metadata`, the precise meaning of 'heuristics are applied' depends on the property/method
+        in question. The following properties/methods have both strict and non-strict behaviours:
+
+        - `climatology_bounds_var_name`
+        - `is_multi_year_mean`
+
+        See docstrings for each prop/method for details of non-strict behaviour.
+
+        NOTE: Any code that depends on these methods, including other properties and methods in this class,
+        therefore also implicitly have both strict and non-strict behaviours.
+        """
         super(CFDataset, self).__init__(*args, **kwargs)
+        # Store options directly via dict to prevent them being treated as Dataset attributes.
+        # It's possible that it would be better to define `__setattribute__` with a special case for this attr name,
+        # complementary to `__getattribute__`.
+        self.__dict__['_cf_dataset_options'] = {'strict_metadata': kwargs.get('strict_metadata', False)}
 
     def is_indirected(self, name):
         """Return True iff the property named has an indirect value.
         See class docstring for explanation of indirect values.
+        Does not handle `_cf_dataset_options`, but that doesn't matter.
         """
         return _indirection_info(self.get_direct_value(name))[0]
 
     def get_direct_value(self, name):
         """Return the value of the named property without indirection processing.
         See class docstring for explanation of indirect values.
+        Does not handle `_cf_dataset_options`, but that doesn't matter.
         """
         return super(CFDataset, self).__getattribute__(name)
 
     @prevent_infinite_recursion
     def __getattribute__(self, name):
-        """Handle indirect values for properties.
-        See class docstring for explanation of indirect values.
+        """Handle special cases of attribute retrieval:
+
+        - Special attribute named `_cf_dataset_options`: A local attr. Do not delegate to super.
+        - Indirect values for properties. See class docstring for explanation of indirect values.
+        - Otherwise: Delegate to super.
 
         :param name: (str) name of attribute
         """
+        # Special attribute named `_cf_dataset_options`.
+        if name == '_cf_dataset_options':
+            return self.__dict__[name]
+
+        # Indirect value
         value = super(CFDataset, self).__getattribute__(name)  # cannot use ``getattr``, otherwise infinite recursion
         is_indirected, indirected_property = _indirection_info(value)
         if is_indirected:
@@ -209,6 +241,8 @@ class CFDataset(Dataset):
                 return getattr(self, indirected_property)
             except AttributeError:
                 return value
+
+        # Regular old value
         return value
 
     @property
@@ -362,26 +396,132 @@ class CFDataset(Dataset):
 
     @property
     def climatology_bounds_var_name(self):
-        """Return the name of the climatological time bounds variable, None if no such variable exists"""
-        axes = self.axes_dim()
-        if 'T' in axes:
-            time_axis = axes['T']
-        else:
+        """Return the name of the climatological time bounds variable, None if no such variable exists.
+
+        If `self.options['strict_metadata']` is True, use strict rules only for identifying climatology bounds variable.
+        Otherwise, use heuristics as well.
+        """
+        # Strict rules begin here
+
+        # If there is no time axis, there are no climo bounds. Fail.
+        try:
+            time_var = self.time_var
+        except ValueError:
             return None
 
+        # If time:climatology attribute exists, use it.
         try:
-            return self.variables[time_axis].climatology
+            return time_var.climatology
         except AttributeError:
-            return None
+            if self._cf_dataset_options['strict_metadata']:
+                return None
+
+        # Non-strict heuristics begin here
+
+        # Heuristic: A variable with a likely name exists
+        for name in ['climatology_bounds', 'climatology_bnds', 'climo_bounds', 'climo_bnds']:
+            if name in self.variables:
+                return name
+
+        def multi_year_bounds(time_bounds):
+            """Return True iff time bounds is non-empty and each time bound spans at least 2 years.
+            Note: 2 years is small, but test code uses relatively short multi-year means.
+            """
+            scale = time_scale(time_bounds)
+            return time_bounds.size > 0 and all(
+                time_to_seconds(end_time, scale) - time_to_seconds(start_time, scale) >= time_to_seconds(720, 'days')
+                for start_time, end_time in time_bounds[:]
+            )
+
+        # Heuristic: Time variable has 'bounds' (not 'climatology') attribute identifying an existing variable
+        # AND that time bounds variable brackets multi-year periods (corresponding to the climatological averaging)
+        if hasattr(time_var, 'bounds'):
+            time_bounds_name = time_var.bounds
+            time_bounds = self.variables[time_bounds_name]
+            if multi_year_bounds(time_bounds):
+                return time_bounds_name
+
+        # Heuristic: Variable with name 'time_bounds' or 'time_bnds' exists (but not identified by time:bounds)
+        # AND that time bounds variable brackets multi-year periods (corresponding to the climatological averaging)
+        for time_bounds_name in ['time_bounds', 'time_bnds']:
+            if time_bounds_name in self.variables:
+                time_bounds = self.variables[time_bounds_name]
+                if multi_year_bounds(time_bounds):
+                    return time_bounds_name
+
+        # Alas
+        return None
 
     @property
     def is_multi_year_mean(self):
-        """True if the metadata indicates that the data consists of a multi-year mean,
+        """Return True if the metadata indicates that the data consists of a multi-year mean,
         i.e., if the file contains a climatological time bounds variable.
+
         See http://cfconventions.org/Data/cf-conventions/cf-conventions-1.6/build/
         cf-conventions.html#climatological-statistics,
-        section 7.4"""
-        return bool(self.climatology_bounds_var_name)
+        section 7.4
+
+        In non-strict mode, failing metadata that conforms to the above standard, we use heuristics.
+        These heuristics are emobodied here and in `get_climatology_bounds_var_name` in non-strict mode.
+
+        If `self._cf_dataset_options['strict_metadata']` is True, use strict rules only for determining if this file contains
+        multi-year means. Otherwise, use heuristics as well.
+        """
+        # If there is no time axis, this can't be a file of temporal means.
+        try:
+            time_var = self.time_var
+        except ValueError:
+            return False
+
+        # Strict and non-strict rules, according to flag
+        if self.climatology_bounds_var_name:
+            # TODO: Output of `get_climatology_bounds_var_name` does not necessarily exist in the file.
+            # Should we check for existence?
+            return True
+
+        # Strict rules begin here
+        if self._cf_dataset_options['strict_metadata']:
+            return False
+
+        # Additional non-strict heuristics begin here
+        
+        # Heuristic: Time variable has "suspicious" length: 1, 4, 12, 5, 13, 16, 17 (yearly, seasonal, monthly, and
+        # various concatenations thereof) 
+        # AND time variable has likely values (mid-month, mid-season, mid-year)
+
+        def check_monthly(time_steps):
+            def check(t, month):
+                return t.month == month and t.day in {14, 15, 16}
+            return all(check(next(time_steps), month) for month in range(1, 13))
+
+        def check_seasonal(time_steps):
+            def check(t, month):
+                return t.month == month and t.day in {15, 16, 17}
+            return all(check(next(time_steps), month) for month in (1, 4, 7, 10))
+
+        def check_yearly(time_steps):
+            t = next(time_steps)
+            return (t.month == 6 and t.day == 30) or (t.month == 7 and t.day in {1, 2})
+
+        try:
+            check_intervals = {
+                1: (check_yearly,),
+                4: (check_seasonal,),
+                12: (check_monthly,),
+                5: (check_seasonal, check_yearly),
+                13: (check_monthly, check_yearly),
+                16: (check_monthly, check_seasonal),
+                17: (check_monthly, check_seasonal, check_yearly),
+            }[time_var.size]
+        except KeyError:
+            pass  # No suspcious lengths: Try next heuristic
+        else:
+            time_steps = (t for t in self.time_steps['datetime'])
+            if all(check(time_steps) for check in check_intervals):
+                return True
+
+        # Alas
+        return False
 
     @property
     def lat_var(self):
@@ -450,12 +590,7 @@ class CFDataset(Dataset):
     @cached_property
     def time_step_size(self):
         """Median of all intervals between successive timesteps in the file"""
-        time_var = self.time_var
-        match = re.match('(days|hours|minutes|seconds) since.*', time_var.units)
-        if match:
-            scale = match.groups()[0]
-        else:
-            raise ValueError("cf_units param must be a string of the form '<time units> since <reference time>'")
+        scale = time_scale(self.time_var)
         times = self.time_var_values
         median_difference = np.median(np.diff(times))
         return time_to_seconds(median_difference, scale)

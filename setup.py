@@ -15,6 +15,9 @@ setup(
     zip_safe=True,
     install_requires=['netCDF4', 'cached-property', 'python-dateutil'],
     package_data={'nchelpers': [
+        'data/CanESM2-rcp85-tasmax-r1i1p1-2010-2039.nc',
+        'data/cgcm.nc',
+        'data/prism_pr_small.nc',
         'data/tiny_gcm.nc',
         'data/tiny_downscaled.nc',
         'data/tiny_hydromodel_gcm.nc',

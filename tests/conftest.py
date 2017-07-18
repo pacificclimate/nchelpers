@@ -1,6 +1,26 @@
+import sys
+import os
+
 from pytest import fixture
 from pkg_resources import resource_filename
 from nchelpers import CFDataset
+
+from .helpers.nc_file_specs import create_fake_nc_dataset
+
+
+@fixture
+def dataset(request):
+    """Return a test dataset, based on request param.
+
+    request.param: (str) selects the test file to be returned
+    returns: (nchelpers.CFDataset) test file as a CFDataset object
+
+    This fixture should be invoked with indirection.
+
+    If you're testing with tiny_ datasets, use the fixture `tiny_dataset`.
+    """
+    filename = 'data/{}.nc'.format(request.param)
+    return CFDataset(resource_filename('nchelpers', filename))
 
 
 @fixture
@@ -14,6 +34,17 @@ def tiny_dataset(request):
     """
     filename = 'data/tiny_{}.nc'.format(request.param)
     return CFDataset(resource_filename('nchelpers', filename))
+
+
+@fixture(scope='function')
+def temp_nc(tmpdir_factory):
+    return str(tmpdir_factory.mktemp('temp').join('file.nc'))
+
+
+@fixture
+def fake_nc_dataset(request, temp_nc):
+    create_fake_nc_dataset(temp_nc, request.param)
+    return temp_nc
 
 
 @fixture
