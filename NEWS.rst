@@ -1,6 +1,28 @@
 News / Release Notes
 ====================
 
+1.0.6
+-----
+
+*Release Date: 18-Jul-2017*
+
+* Makes identification of climatological bounds and identification of files containing
+  multi-year means more flexible, i.e., accommodates files that do not comply with
+  PCIC and CF metadata standards but which can be interpreted with the application of
+  some reasonable heuristics.
+  * Adds 'strict_metadata' flag to CFDataset to determine whether strict metadata standards
+    are applied, or heuristics. Default non-strict.
+* Climatology bounds heuristics:
+  * Look for variables with likely names, in some cases with addtional check for
+    plausible bounds values
+  * Allow 'bounds' attribute instead of 'climatology' attribute, check plausible
+    bounds values.
+  * For details, see https://github.com/pacificclimate/nchelpers/issues/22
+* Multi-year mean heuristics:
+  * Climatology bounds identified in non-strict mode.
+  * Time variable with suspicious length and with plausible values.
+  * For details, see https://github.com/pacificclimate/nchelpers/issues/22
+
 1.0.5
 -----
 
