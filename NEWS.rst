@@ -1,7 +1,7 @@
 News / Release Notes
 ====================
 
-1.0.6
+1.1.0
 -----
 
 *Release Date: 18-Jul-2017*
@@ -12,16 +12,21 @@ News / Release Notes
   some reasonable heuristics.
   * Adds 'strict_metadata' flag to CFDataset to determine whether strict metadata standards
     are applied, or heuristics. Default non-strict.
-* Climatology bounds heuristics:
-  * Look for variables with likely names, in some cases with addtional check for
-    plausible bounds values
-  * Allow 'bounds' attribute instead of 'climatology' attribute, check plausible
-    bounds values.
-  * For details, see https://github.com/pacificclimate/nchelpers/issues/22
-* Multi-year mean heuristics:
-  * Climatology bounds identified in non-strict mode.
-  * Time variable with suspicious length and with plausible values.
-  * For details, see https://github.com/pacificclimate/nchelpers/issues/22
+  * Climatology bounds heuristics:
+    * Look for variables with likely names, in some cases with addtional check for
+      plausible bounds values
+    * Allow 'bounds' attribute instead of 'climatology' attribute, check plausible
+      bounds values.
+    * For details, see https://github.com/pacificclimate/nchelpers/issues/22
+  * Multi-year mean heuristics:
+    * Climatology bounds identified in non-strict mode.
+    * Time variable with suspicious length and with plausible values.
+    * For details, see https://github.com/pacificclimate/nchelpers/issues/22
+* Classifies time resolution more flexibly:
+  * Returns 'seasonal' for time periods between 88 and 92 days. (new - breaking change)
+  * Returns 'monthly' for time periods between 28 and 31 days. (extended)
+  * Returns 'yearly' for time periods of 360, 365, and 366 days. (extended)
+
 
 1.0.5
 -----
