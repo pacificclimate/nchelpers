@@ -1,3 +1,16 @@
+"""Module containing helper functions and, centrally, a class that extends
+``netcdf4.Dataset`` with properties and methods useful for PCIC applications
+(and more generally).
+
+NOTE TO DEVELOPERS:
+
+``netcdf4`` somehow catches and rethrows **all** ``AttributeError``s,
+stripped of their message. This is (a) confusing, and (b) makes it necessary
+to substitute an exception not derived from AttributeError if you want to
+get a message out to the user. This package defines custom exceptions
+for this purpose.
+"""
+
 from datetime import datetime, timedelta
 import dateutil.parser
 import hashlib
@@ -10,6 +23,7 @@ import six
 from netCDF4 import Dataset, num2date, date2num
 from nchelpers.date_utils import time_scale, resolution_standard_name, time_to_seconds, d2ss
 from nchelpers.decorators import prevent_infinite_recursion
+from nchelpers.exceptions import CFAttributeError, CFValueError
 
 # Map of nchelpers time resolution strings to MIP table names, standard where possible.
 # For an explanation of the content of this map, see the discussion in section titled "MIP table / table_id" in
@@ -95,7 +109,7 @@ def _cmor_formatted_time_range(t_min, t_max, time_resolution='daily'):
     try:
         fmt = {'yearly': '%Y', 'monthly': '%Y%m', 'daily': '%Y%m%d'}[time_resolution]
     except KeyError:
-        raise ValueError("Cannot format a time range with resolution '{}' (only yearly, monthly or daily)"
+        raise CFValueError("Cannot format a time range with resolution '{}' (only yearly, monthly or daily)"
                          .format(time_resolution))
     return '{}-{}'.format(t_min.strftime(fmt), t_max.strftime(fmt))
 
@@ -389,7 +403,7 @@ class CFDataset(Dataset):
             return {}
         compressed_axis_names = self.variables[var_name].compress.split()
         if len(compressed_axis_names) != 2:
-            raise ValueError("Expected '{}:compress' to contain 2 variable names, found {}"
+            raise CFValueError("Expected '{}:compress' to contain 2 variable names, found {}"
                              .format(var_name, compressed_axis_names))
         # TODO: Verify that compressed axis names are always in the order Y, X
         return {'X': compressed_axis_names[1], 'Y': compressed_axis_names[0]}
@@ -406,7 +420,7 @@ class CFDataset(Dataset):
         # If there is no time axis, there are no climo bounds. Fail.
         try:
             time_var = self.time_var
-        except ValueError:
+        except CFValueError:
             return None
 
         # If time:climatology attribute exists, use it.
@@ -470,7 +484,7 @@ class CFDataset(Dataset):
         # If there is no time axis, this can't be a file of temporal means.
         try:
             time_var = self.time_var
-        except ValueError:
+        except CFValueError:
             return False
 
         # Strict and non-strict rules, according to flag
@@ -530,7 +544,7 @@ class CFDataset(Dataset):
         try:
             return self.variables[axes['Y']]
         except KeyError:
-            raise ValueError('No axis is attributed with latitude information')
+            raise CFValueError('No axis is attributed with latitude information')
 
     @property
     def lon_var(self):
@@ -539,7 +553,7 @@ class CFDataset(Dataset):
         try:
             return self.variables[axes['X']]
         except KeyError:
-            raise ValueError('No axis is attributed with longitude information')
+            raise CFValueError('No axis is attributed with longitude information')
 
     @property
     def time_var(self):
@@ -548,7 +562,7 @@ class CFDataset(Dataset):
         if 'T' in axes:
             time_axis = axes['T']
         else:
-            raise ValueError("No axis is attributed with time information")
+            raise CFValueError("No axis is attributed with time information")
         t = self.variables[time_axis]
         assert hasattr(t, 'units') and hasattr(t, 'calendar')
         return t
@@ -699,13 +713,28 @@ class CFDataset(Dataset):
         }
 
         def __getattr__(self, alias):
-            project_id = self.dataset.project_id
+            def missing_attribute(name):
+                return CFAttributeError(
+                    "Expected file to contain attribute '{}', "
+                    "but no such attribute exists"
+                     .format(name)
+                )
+
+            try:
+                project_id = self.dataset.project_id
+            except AttributeError:
+                raise missing_attribute('project_id')
+
             if project_id not in ['CMIP3', 'CMIP5']:
-                raise ValueError("Expected file to have project id of 'CMIP3' or 'CMIP5', found '{}'"
-                                 .format(project_id))
+                raise CFValueError(
+                    "Expected file to have project id of 'CMIP3' or 'CMIP5', "
+                    "found '{}'"
+                     .format(project_id)
+                )
 
             if alias not in self._aliases.keys():
-                raise AttributeError("No such unified attribute: '{}'".format(alias))
+                raise CFAttributeError(
+                    "No such unified attribute: '{}'".format(alias))
 
             def getdottedattr(obj, dotted_attr):
                 attrs = dotted_attr.split('.')
@@ -718,8 +747,7 @@ class CFDataset(Dataset):
             try:
                 return getdottedattr(self.dataset, attr)
             except:
-                raise AttributeError("Expected file to contain attribute '{}' but no such attribute exists"
-                                     .format(attr))
+                raise missing_attribute(attr)
 
     @property
     def metadata(self):
@@ -783,10 +811,10 @@ class CFDataset(Dataset):
             elif self.dataset.is_hydromodel_dgcm_output:
                 prefix = 'forcing_driving_'
             elif self.dataset.is_hydromodel_iobs_output:
-                raise AttributeError('GCM attributes have no meaning for a hydrological model forced by '
+                raise CFAttributeError('GCM attributes have no meaning for a hydrological model forced by '
                                      'observational data')
             else:
-                raise AttributeError('Cannot generate automatic GCM attribute prefixes for a file '
+                raise CFAttributeError('Cannot generate automatic GCM attribute prefixes for a file '
                                      'without a recognized type')
 
             return prefix + attr
@@ -796,7 +824,7 @@ class CFDataset(Dataset):
             try:
                 return getattr(self.dataset, prefixed_attr)
             except AttributeError:
-                raise AttributeError("Expected file to contain attribute '{}' but no such attribute exists"
+                raise CFAttributeError("Expected file to contain attribute '{}' but no such attribute exists"
                                      .format(self._prefixed(attr)))
 
         def __setattr__(self, attr, value):
