@@ -2,13 +2,20 @@ from datetime import datetime, date
 import collections
 import re
 
+from nchelpers.exceptions import CFAttributeError, CFValueError
+
 
 def time_scale(time_var):
-    match = re.match('(days|hours|minutes|seconds) since.*', time_var.units)
+    try:
+        units = time_var.units
+    except AttributeError:
+        raise CFAttributeError("Time variable '{}' lacks 'units' attribute"
+                               .format(time_var.name))
+    match = re.match('(days|hours|minutes|seconds) since.*', units)
     if match:
         return match.groups()[0]
     else:
-        raise ValueError("cf_units param must be a string of the form '<time units> since <reference time>'")
+        raise CFValueError("cf_units param must be a string of the form '<time units> since <reference time>'")
 
 
 def resolution_standard_name(seconds):
@@ -48,7 +55,7 @@ def time_to_seconds(x, units='seconds'):
     if units in seconds_per_unit:
         return x * seconds_per_unit[units]
     else:
-        raise ValueError("No conversions available for unit '{}'".format(units))
+        raise CFValueError("No conversions available for unit '{}'".format(units))
 
 
 def to_datetime(value):
