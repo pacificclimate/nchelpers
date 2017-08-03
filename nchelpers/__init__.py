@@ -437,11 +437,10 @@ class CFDataset(Dataset):
             if name in self.variables:
                 return name
 
-        def multi_year_bounds(time_bounds):
+        def multi_year_bounds(time_bounds, scale):
             """Return True iff time bounds is non-empty and each time bound spans at least 2 years.
             Note: 2 years is small, but test code uses relatively short multi-year means.
             """
-            scale = time_scale(time_bounds)
             return time_bounds.size > 0 and all(
                 time_to_seconds(end_time, scale) - time_to_seconds(start_time, scale) >= time_to_seconds(720, 'days')
                 for start_time, end_time in time_bounds[:]
@@ -450,17 +449,19 @@ class CFDataset(Dataset):
         # Heuristic: Time variable has 'bounds' (not 'climatology') attribute identifying an existing variable
         # AND that time bounds variable brackets multi-year periods (corresponding to the climatological averaging)
         if hasattr(time_var, 'bounds'):
+            scale = time_scale(time_var)
             time_bounds_name = time_var.bounds
             time_bounds = self.variables[time_bounds_name]
-            if multi_year_bounds(time_bounds):
+            if multi_year_bounds(time_bounds, scale):
                 return time_bounds_name
 
         # Heuristic: Variable with name 'time_bounds' or 'time_bnds' exists (but not identified by time:bounds)
         # AND that time bounds variable brackets multi-year periods (corresponding to the climatological averaging)
         for time_bounds_name in ['time_bounds', 'time_bnds']:
+            scale = time_scale(time_var)
             if time_bounds_name in self.variables:
                 time_bounds = self.variables[time_bounds_name]
-                if multi_year_bounds(time_bounds):
+                if multi_year_bounds(time_bounds, scale):
                     return time_bounds_name
 
         # Alas
