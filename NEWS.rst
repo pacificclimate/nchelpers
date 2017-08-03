@@ -1,6 +1,21 @@
 News / Release Notes
 ====================
 
+2.0.0
+-----
+
+*Release Date: 03-Aug-2017*
+
+* Because of the change to exception-raising noted below, this is technically a breaking change.
+  However, all unit tests of all clients of this package have been run against this new version
+  without failure.
+* Raises package-defined exceptions instead of generic exceptions. This corrects problems caused by
+  ``netCDF4`` capturing and reraising ``AttributeError``s containing a generic error message and
+  lacking stack context of the original error.
+* Fixes a bug in which time units were attempted to be taken from a *time bounds* variable and not
+  from the time variable proper. This affected the identification of climatological bounds and of
+  files containing multi-year means released in ver 1.1.0.
+
 1.1.0
 -----
 
