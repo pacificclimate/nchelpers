@@ -11,6 +11,7 @@ get a message out to the user. This package defines custom exceptions
 for this purpose.
 """
 
+import os.path
 from datetime import datetime, timedelta
 import dateutil.parser
 import hashlib
@@ -211,6 +212,26 @@ class CFDataset(Dataset):
         # It's possible that it would be better to define `__setattribute__` with a special case for this attr name,
         # complementary to `__getattribute__`.
         self.__dict__['_cf_dataset_options'] = {'strict_metadata': kwargs.get('strict_metadata', False)}
+
+    def filepath(self, converter=None):
+        """Return the filepath, optionally processed by a converter,
+        either none (no conversion) or one of the ``os.path`` path
+        transformation functions, ``abspath``, ``normpath``, or ``realpath``.
+        """
+        fp = super(CFDataset, self).filepath()
+        converters = {
+            None: lambda fp: fp,
+            'abspath': os.path.abspath,
+            'normpath': os.path.normpath,
+            'realpath': os.path.realpath,
+        }
+        try:
+            return converters[converter](fp)
+        except:
+            raise ValueError(
+                "Expected convert to have value in {}, but got '{}'"
+                .format(converters.keys(), converter)
+            )
 
     def is_indirected(self, name):
         """Return True iff the property named has an indirect value.
