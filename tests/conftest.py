@@ -9,6 +9,27 @@ from .helpers.nc_file_specs import create_fake_nc_dataset
 
 
 @fixture
+def cwd():
+    return os.getcwd()
+
+
+@fixture
+def raw_dataset(request, cwd):
+    """Return a dataset, based on request param.
+
+    request.param: (str) filepath to data file to be returned
+    returns: (nchelpers.CFDataset) test file as a CFDataset object
+
+    This fixture should be invoked with indirection.
+
+    This fixture should be used only for testing filepath manipulation.
+    For other purposes, use ``dataset`` or ``tiny_dataset``, which use
+    ``resource_filename`` to locate the dataset.
+    """
+    return CFDataset(request.param.format(cwd=cwd))
+
+
+@fixture
 def dataset(request):
     """Return a test dataset, based on request param.
 

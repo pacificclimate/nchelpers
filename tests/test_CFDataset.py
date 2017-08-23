@@ -14,6 +14,8 @@ To get around that, we use indirect fixtures, which are passed a parameter
 that they use to determine their behaviour, i.e. what input file to return.
 """
 from datetime import datetime
+import os
+
 from pytest import mark, raises, approx
 
 from netCDF4 import num2date
@@ -30,6 +32,28 @@ from .helpers.time_values import suspicious_time_values, non_suspicious_time_val
 # Arelia is preparing such a file as of Apr 4.
 
 # TODO: Get an RCM output file and test against it. (Driven by property 'model_type'.)
+
+
+@mark.parametrize('raw_dataset, converter, expected', [
+    # absolute path
+    ('{cwd}/nchelpers/data/tiny_gcm.nc', None, '{cwd}/nchelpers/data/tiny_gcm.nc'),
+    ('{cwd}/nchelpers/data/tiny_gcm.nc', 'abspath', '{cwd}/nchelpers/data/tiny_gcm.nc'),
+    ('{cwd}/nchelpers/data/tiny_gcm.nc', 'normpath', '{cwd}/nchelpers/data/tiny_gcm.nc'),
+    ('{cwd}/nchelpers/data/tiny_gcm.nc', 'realpath', '{cwd}/nchelpers/data/tiny_gcm.nc'),
+    # relative path
+    ('./nchelpers/data/tiny_gcm.nc', None, './nchelpers/data/tiny_gcm.nc'),
+    ('./nchelpers/data/tiny_gcm.nc', 'abspath', '{cwd}/nchelpers/data/tiny_gcm.nc'),
+    ('./nchelpers/data/tiny_gcm.nc', 'normpath', 'nchelpers/data/tiny_gcm.nc'),
+    ('./nchelpers/data/tiny_gcm.nc', 'realpath', '{cwd}/nchelpers/data/tiny_gcm.nc'),
+    # relative path with symlink
+    ('./nchelpers/data/ln_tiny_gcm.nc', None, './nchelpers/data/ln_tiny_gcm.nc'),
+    ('./nchelpers/data/ln_tiny_gcm.nc', 'abspath', '{cwd}/nchelpers/data/ln_tiny_gcm.nc'),
+    ('./nchelpers/data/ln_tiny_gcm.nc', 'normpath', 'nchelpers/data/ln_tiny_gcm.nc'),
+    ('./nchelpers/data/ln_tiny_gcm.nc', 'realpath', '{cwd}/nchelpers/data/tiny_gcm.nc'),
+], indirect=['raw_dataset'])
+def test_filepath(cwd, raw_dataset, converter, expected):
+    assert raw_dataset.filepath(converter) == expected.format(cwd=cwd)
+
 
 # Test CFDataset properties that can be tested with a simple equality test. Most are of this kind.
 @mark.parametrize('tiny_dataset, prop, expected', [
