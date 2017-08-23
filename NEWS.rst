@@ -1,6 +1,14 @@
 News / Release Notes
 ====================
 
+2.1.0
+-----
+
+*Release Date: 23-Aug-2017*
+
+* Add path-conversion option to CFDataset.filepath().
+  See [Issue 26](https://github.com/pacificclimate/nchelpers/issues/26)
+
 2.0.0
 -----
 
