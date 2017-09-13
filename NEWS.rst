@@ -1,12 +1,21 @@
 News / Release Notes
 ====================
 
+3.0.0
+-----
+
+*Release Date: 23-Aug-2017*
+
+* Add optional argument to ``CFDataset.dependent_varnames`` to specify the dimesions on which
+  the returned variables must be dependent. Is a breaking change since this changes ``dependent_varnames``
+  from a property to a method.
+
 2.1.0
 -----
 
 *Release Date: 23-Aug-2017*
 
-* Add path-conversion option to CFDataset.filepath().
+* Add path-conversion option to ``CFDataset.filepath``.
   See [Issue 26](https://github.com/pacificclimate/nchelpers/issues/26)
 
 2.0.0
