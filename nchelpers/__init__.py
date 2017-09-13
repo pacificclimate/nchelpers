@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 import dateutil.parser
 import hashlib
 import re
+import collections
 
 from cached_property import cached_property
 import numpy as np
@@ -299,28 +300,50 @@ class CFDataset(Dataset):
                 hash_md5.update(chunk)
         return hash_md5.hexdigest()
 
-    @property
-    def dependent_varnames(self):
-        """A list of the primary (dependent) variables in this file.
+    def dependent_varnames(self, dim_names=set()):
+        """A list of the names of the dependent (non-dimension) variables
+        in this file, optionally specified by dependence on specific
+        dimensions.
+
+        :param dim_names: (str or iterable(str)) name(s) of dimensions
+            the returned variables must be dependent on.
+
+        A returned variable can be dependent on other dimensions in addition to
+        those specified by ``dimensions``, i.e., its set of dimensions need only
+        be a superset of the specified dimensions.
+
+        An empty set of dimensions returns all dependent variables regardless
+        of dimensions.
 
         Many variables in a NetCDF file describe the *structure* of the data and aren't necessarily the
         values that we actually care about. For example a file with temperature data also has to include
         latitude/longitude variables, a time variable, and possibly bounds variables for each of the dimensions.
         These dimensions and bounds are independent variables.
 
-        This function filters out the names of all independent variables and just gives you the "important" (dependent)
-        variable names.
+        This function returns the names of the "important" (dependent) variables,
+        with the "unimportant" ones filtered out.
         """
-        variables = set(self.variables.keys())
-        non_dependent_variables = set(self.dimensions.keys())
+        if isinstance(dim_names, six.string_types):
+            dim_names = {dim_names}
+        elif isinstance(dim_names, collections.Iterable):
+            dim_names = {d for d in dim_names
+                         if isinstance(d, six.string_types)}
+        else:
+            raise ValueError(
+                'Invalid dimensions argument: must be None, str,'
+                ' or iterable(str)')
+
+        var_names = {variable.name for variable in self.variables.values()
+                     if dim_names <= set(variable.dimensions)}
+        non_dependent_var_names = set(self.dimensions.keys())
         for variable in self.variables.values():
             if hasattr(variable, 'bounds'):
-                non_dependent_variables.add(variable.bounds)
+                non_dependent_var_names.add(variable.bounds)
             if hasattr(variable, 'climatology'):
-                non_dependent_variables.add(variable.climatology)
+                non_dependent_var_names.add(variable.climatology)
             if hasattr(variable, 'coordinates'):
-                non_dependent_variables.update(variable.coordinates.split())
-        return [v for v in variables - non_dependent_variables]
+                non_dependent_var_names.update(variable.coordinates.split())
+        return [name for name in var_names - non_dependent_var_names]
 
     def dim_names(self, var_name=None):
         """Return names of dimensions of a specified variable (or all dimensions) in this file
@@ -893,7 +916,7 @@ class CFDataset(Dataset):
 
         # File content-independent components
         components = {
-            'variable': '+'.join(sorted(self.dependent_varnames)),
+            'variable': '+'.join(sorted(self.dependent_varnames())),
             'ensemble_member': self.ensemble_member,
         }
 
@@ -971,7 +994,7 @@ class CFDataset(Dataset):
         :return: (str) filename
         """
         return cmor_type_filename(extension='.nc', **self._cmor_type_filename_components(
-            variable=variable or '+'.join(sorted(self.dependent_varnames)),
+            variable=variable or '+'.join(sorted(self.dependent_varnames())),
             # See section Generating Filenames in
             # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data
             frequency={

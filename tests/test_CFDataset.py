@@ -463,14 +463,17 @@ def test_axes_dim(tiny_dataset, expected):
 # Request sent to Stephen Sobie and Trevor Murdock 2017-06-02 for such a file.
 
 
-@mark.parametrize('tiny_dataset, expected', [
-    ('gcm', {'tasmax'}),
-    ('downscaled', {'tasmax'}),
-    ('hydromodel_gcm', {'RUNOFF', 'BASEFLOW', 'EVAP', 'GLAC_MBAL_BAND', 'GLAC_AREA_BAND', 'SWE_BAND'}),
-    ('climo_gcm', {'tasmax'}),
+@mark.parametrize('tiny_dataset, dim_names, expected', [
+    ('gcm', set(), {'tasmax'}),
+    ('gcm', {'time'}, {'tasmax'}),
+    ('gcm', {'lat', 'lon'}, {'tasmax'}),
+    ('gcm', {'foo'}, set()),
+    ('downscaled', set(), {'tasmax'}),
+    ('hydromodel_gcm', set(), {'RUNOFF', 'BASEFLOW', 'EVAP', 'GLAC_MBAL_BAND', 'GLAC_AREA_BAND', 'SWE_BAND'}),
+    ('climo_gcm', set(), {'tasmax'}),
 ], indirect=['tiny_dataset'])
-def test_dependent_varnames(tiny_dataset, expected):
-    assert set(tiny_dataset.dependent_varnames) == expected
+def test_dependent_varnames(tiny_dataset, dim_names, expected):
+    assert set(tiny_dataset.dependent_varnames(dim_names=dim_names)) == expected
 
 
 @mark.parametrize('tiny_dataset', [
