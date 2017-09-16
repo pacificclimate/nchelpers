@@ -772,7 +772,7 @@ class CFDataset(Dataset):
             extrema = tuple(add_1_month(e) for e in extrema)
 
         if closed:
-            delta = seconds_to_time(1, units=time_scale(self.time_var))
+            delta = seconds_to_time(1.0, units=time_scale(self.time_var))
             extrema = (extrema[0], extrema[1] - delta)
 
         return extrema
