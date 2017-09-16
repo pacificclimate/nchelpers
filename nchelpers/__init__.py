@@ -13,6 +13,7 @@ for this purpose.
 
 import os.path
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 import dateutil.parser
 import hashlib
 import re
@@ -23,7 +24,10 @@ import numpy as np
 import six
 
 from netCDF4 import Dataset, num2date, date2num
-from nchelpers.date_utils import time_scale, resolution_standard_name, time_to_seconds, d2ss
+from nchelpers.date_utils import \
+    time_scale, resolution_standard_name, \
+    time_to_seconds, seconds_to_time, \
+    d2ss, to_datetime
 from nchelpers.decorators import prevent_infinite_recursion
 from nchelpers.exceptions import CFAttributeError, CFValueError
 
@@ -453,6 +457,49 @@ class CFDataset(Dataset):
         return {'X': compressed_axis_names[1], 'Y': compressed_axis_names[0]}
 
     @property
+    def time_bounds_var_name(self):
+        """Return the name of the time bounds variable, 
+        None if no such variable exists.
+        
+        If `self.options['strict_metadata']` is True, use strict rules only for 
+        identifying the time bounds variable.
+        Otherwise, use heuristics as well.
+        """
+        # Strict rules begin here
+
+        # If there is no time axis, there are no time bounds. Fail.
+        try:
+            time_var = self.time_var
+        except CFValueError:
+            return None
+
+        # If time:bounds attribute exists, use it.
+        try:
+            return time_var.bounds
+        except AttributeError:
+            if self._cf_dataset_options['strict_metadata']:
+                return None
+
+        # Non-strict heuristics begin here
+
+        # Heuristic: A variable with a likely name exists
+        for name in ['time_bounds', 'time_bnds']:
+            if name in self.variables:
+                return name
+
+        # Alas
+        return None
+
+    @property
+    def time_bounds_values(self):
+        """Return values of the time bounds variable as a Python list."""
+        if self.time_bounds_var_name is None:
+            raise ValueError(
+                'No time bounds variable is detectable in this file.')
+        time_bounds_var = self.variables[self.time_bounds_var_name]
+        return  time_bounds_var[...]
+
+    @property
     def climatology_bounds_var_name(self):
         """Return the name of the climatological time bounds variable, None if no such variable exists.
 
@@ -512,6 +559,16 @@ class CFDataset(Dataset):
         return None
 
     @property
+    def climatology_bounds_values(self):
+        """Return the values of the climatology bounds variable
+        as a numpy array of numeric values (not datetimes)"""
+        if not self.is_multi_year_mean:
+            raise ValueError('climatology bounds are defined only for files'
+                             'containing multi-year means')
+        climatology_bounds_var = self.variables[self.climatology_bounds_var_name]
+        return climatology_bounds_var[...]
+
+    @property
     def is_multi_year_mean(self):
         """Return True if the metadata indicates that the data consists of a multi-year mean,
         i.e., if the file contains a climatological time bounds variable.
@@ -521,7 +578,7 @@ class CFDataset(Dataset):
         section 7.4
 
         In non-strict mode, failing metadata that conforms to the above standard, we use heuristics.
-        These heuristics are emobodied here and in `get_climatology_bounds_var_name` in non-strict mode.
+        These heuristics are emobodied here and in `climatology_bounds_var_name` in non-strict mode.
 
         If `self._cf_dataset_options['strict_metadata']` is True, use strict rules only for determining if this file contains
         multi-year means. Otherwise, use heuristics as well.
@@ -534,7 +591,7 @@ class CFDataset(Dataset):
 
         # Strict and non-strict rules, according to flag
         if self.climatology_bounds_var_name:
-            # TODO: Output of `get_climatology_bounds_var_name` does not necessarily exist in the file.
+            # TODO: Output of `climatology_bounds_var_name` does not necessarily exist in the file.
             # Should we check for existence?
             return True
 
@@ -641,10 +698,104 @@ class CFDataset(Dataset):
         time_var = self.time_var
         return num2date(self.time_range, time_var.units, time_var.calendar)
 
-    @property
-    def time_range_formatted(self):
-        """Format the time range of this file string in YYYY[mm[dd]] format, min and max separated by a dash"""
-        return _cmor_formatted_time_range(*self.time_range_as_dates, time_resolution=self.time_resolution)
+    def time_bounds_extrema(self, nominal=True, closed=True):
+        """Extrema of the time bounds, or in the case of a file of multi-year
+        means, the extrema of the climatological bounds. Values returned are in
+        native numerical units of the file.
+
+        :param nominal: (bool) if True, return nominal extrema (see note 1
+            below); otherwise return unadjusted extrema.
+        :param closed: (bool) if True, return bounds as half-open interval
+            ``[start, end)``; otherwise return as closed interval
+            ``[start, end']``. (See note 2 below.)
+
+        The extrema of time bounds is defined by the mininum of the lower time
+        bounds and the maximum of the upper time bounds. They bracket the
+        interval covered by the data in the file.
+
+        1. Nominal extrema
+
+        The nominal extrema for a non-climo file is just the extrema of the
+        time bounds.
+
+        The nominal extrema of climo bounds is the nominal period of averaging,
+        which in the case of seasonal averages is slightly different than the
+        exact bounds. Seasons are defined in 3-month periods beginning in
+        December. The period of multi-year average nominally from the beginning
+        (Jan 1) of one year to the end (end Dec) of another year is actually
+        shifted back 1 month because of this. This function adjusts to make
+        the nominal range comparable for all averaging periods (monthly,
+        seasonal, yearly).
+
+        2. Closed vs. half-open bounds
+
+        Standard practice in CF compliant files
+        is to specify time bounds as a half-open interval ``[start, end)``,
+        such that a time ``x`` is in the interval iff ``start <= x < end``.
+
+        However, in common *usage* (e.g., unique ids, file names, speech),
+        time bounds are expressed as closed intervals.
+
+        This function accommodates both styles with the ``closed`` parameter.
+        When ``closed`` is ``True``, the half-open interval is returned unchanged
+        (except for adjustments for seasonal averaging period).
+        When ``closed`` is ``False``, the endpoint is returned with a small
+        amount (1 second) subtracted so that the interval is closed. This
+        introduces a slight inaccuracy which for our purposes does not matter.
+        """
+        units, calendar = self.time_var.units, self.time_var.calendar
+
+        if self.is_multi_year_mean:
+            bounds_values = self.climatology_bounds_values
+        else:
+            bounds_values = self.time_bounds_values
+
+        extrema = (bounds_values[0,0], bounds_values[-1,1])
+
+        if nominal and \
+                self.is_multi_year_mean and self.time_resolution == 'seasonal':
+            # Seasonal climo bounds are a month back of the nominal averaging
+            # period. Add it back in.
+
+            def add_1_month(num):
+                """Add a relative time specified in kwargs as for relativedelta.
+                Easiest way to do that is to convert to a real datetime,
+                add a month, and convert back.
+                """
+                return date2num(
+                    num2date(num, units, calendar)._to_real_datetime() +
+                        relativedelta(months=1),
+                    units,
+                    calendar
+                )
+
+            extrema = tuple(add_1_month(e) for e in extrema)
+
+        if closed:
+            delta = seconds_to_time(1, units=time_scale(self.time_var))
+            extrema = (extrema[0], extrema[1] - delta)
+
+        return extrema
+
+    @cached_property
+    def nominal_time_coverage(self):
+        """Nominal time coverage of the file.
+
+        In the case of multi-year means, nominal coverage is the nominal range
+        of times covered by the avearaging periods in the file, and equals
+        the extrema of the climatological bounds, adjusted to closed interval
+        form and nominal period.
+
+        In the case of non multi-year mean files, nominal coverage is just
+        the extrema of values in the time variable. A more natural and uniform
+        definition would be the extrema of the time bounds, but time bounds are
+        not always present in our data files (sigh), so we use to this simpler
+        definition.
+        """
+        if self.is_multi_year_mean:
+            return self.time_bounds_extrema(nominal=True, closed=True)
+        else:
+            return self.time_range
 
     @cached_property
     def time_step_size(self):
@@ -918,13 +1069,19 @@ class CFDataset(Dataset):
         components = {
             'variable': '+'.join(sorted(self.dependent_varnames())),
             'ensemble_member': self.ensemble_member,
+            'time_range': _cmor_formatted_time_range(
+                *to_datetime(
+                    num2date(
+                        self.nominal_time_coverage,
+                        self.time_var.units, self.time_var.calendar
+                    )
+                )
+            )
         }
 
         # Components depending on the type of file
         if self.is_multi_year_mean:
             components.update(
-                time_range=_cmor_formatted_time_range(dateutil.parser.parse(self.climo_start_time),
-                                                      dateutil.parser.parse(self.climo_end_time)),
                 frequency=self.frequency
             )
         else:
@@ -934,7 +1091,6 @@ class CFDataset(Dataset):
             # Specifically, we do not consult the value of the attribute table_id because it is too limited for our
             # needs. Instead we map the file's time resolution to a value.
             components.update(
-                time_range=self.time_range_formatted,
                 mip_table=tres_to_mip_table and tres_to_mip_table.get(self.time_resolution, None)
             )
 
