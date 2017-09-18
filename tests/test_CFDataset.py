@@ -319,17 +319,17 @@ def test_is_multi_year_mean_against_nonstandard_datasets(dataset, is_mym):
     assert dataset.is_multi_year_mean == is_mym
 
 
-# Tests of ``time_bounds_extrema`` need only cover 1 non-climo dataset and
-# 3 climo datasets, one each of monthly, seasonal, and annual averages.
-# The climo datasets are known to have time dimension units of 'days since ...',
-# which means we can use constants for values like 1 second or 1 month.
+# All test datasets are known to have time dimension units of 'days since ...',
+# which means we can use constants for time values (no need to convert units).
 
-epsilon = 2e-5 # a small amount of time, about 1 second
-min_month_length = 28
-max_month_length = 31
+epsilon = 2e-5  # about 1 second, in days
+min_month_length = 28  # days
+max_month_length = 31  # days
 
 @mark.parametrize('tiny_dataset, exp_start, exp_end', [
     ('gcm', 5475.0, 9126.0),
+    # ('downscaled', 715509.0, 727197.0),  # downscaled files lack time bounds
+    # ('hydromodel_gcm', 0.0, 4382.0),     # hydromodel files lack time bounds
     ('mClim_gcm', 5475.0, 7665.0),
     ('sClim_gcm', 5475.0, 7665.0),
     ('aClim_gcm', 5475.0, 7665.0),
@@ -341,11 +341,11 @@ def test_time_bounds_extrema(tiny_dataset, nominal, exp_start, exp_end):
     extrema_closed = tiny_dataset.time_bounds_extrema(
         nominal=nominal, closed=True)
 
-    # Check open-closed; relative values
+    # Check open-closed values, relative to each other
     assert extrema_open[0] == extrema_closed[0]
     assert extrema_open[1] - epsilon <= extrema_closed[1] < extrema_open[1]
 
-    # Check nominal; absolute values of open
+    # Check nominal values using absolute values of half-open interval
     if not nominal and tiny_dataset.is_multi_year_mean and \
         tiny_dataset.time_resolution == 'seasonal':
         delta_max = max_month_length
