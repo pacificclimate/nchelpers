@@ -4,11 +4,14 @@ News / Release Notes
 3.0.0
 -----
 
-*Release Date: 23-Aug-2017*
+*Release Date: 18-Sep-2017*
 
+* Migrate time-bounds functions from ``modelmeta``. These now support ``modelmeta`` and provide more
+  robust internal support for time-bounds based functions like ``unique_id`` and ``cmor_filename``.
 * Add optional argument to ``CFDataset.dependent_varnames`` to specify the dimesions on which
   the returned variables must be dependent. Is a breaking change since this changes ``dependent_varnames``
   from a property to a method.
+
 
 2.1.0
 -----
