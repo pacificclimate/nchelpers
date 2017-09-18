@@ -44,18 +44,31 @@ def resolution_standard_name(seconds):
     return 'other'
 
 
+seconds_per_unit = {
+    'seconds': 1,
+    'minutes': 60,
+    'hours': 3600,
+    'days': 86400,
+}
+
+
 def time_to_seconds(x, units='seconds'):
-    '''Return the number of seconds equal to `x` `units` of time, e.g., 10 minutes'''
-    seconds_per_unit = {
-        'seconds': 1,
-        'minutes': 60,
-        'hours': 3600,
-        'days': 86400,
-    }
+    """Return the number of seconds equal to ``x`` ``units`` of time,
+    e.g., 10 minutes -> 600"""
     if units in seconds_per_unit:
         return x * seconds_per_unit[units]
     else:
         raise CFValueError("No conversions available for unit '{}'".format(units))
+
+
+def seconds_to_time(s, units='seconds'):
+    '''Return the number of ``units`` equal to ``s`` seconds of time, e.g.,
+    600 -> 10 minutes'''
+    if units in seconds_per_unit:
+        return s / seconds_per_unit[units]
+    else:
+        raise CFValueError("No conversions available for unit '{}'".format(units))
+
 
 
 def to_datetime(value):
