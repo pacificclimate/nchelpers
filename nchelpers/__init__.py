@@ -708,9 +708,9 @@ class CFDataset(Dataset):
 
         :param nominal: (bool) if True, return nominal extrema (see note 1
             below); otherwise return unadjusted extrema.
-        :param closed: (bool) if True, return bounds as half-open interval
-            ``[start, end)``; otherwise return as closed interval
-            ``[start, end']``. (See note 2 below.)
+        :param closed: (bool) if True, return bounds as a closed interval
+            ``[start, end]``; otherwise return as a half-open interval
+            ``[start, end)``. (See note 2 below.)
 
         The extrema of time bounds is defined by the mininum of the lower time
         bounds and the maximum of the upper time bounds. They bracket the
@@ -721,9 +721,10 @@ class CFDataset(Dataset):
         The nominal extrema for a non-climo file is just the extrema of the
         time bounds.
 
-        The nominal extrema of climo bounds is the nominal period of averaging,
-        which in the case of seasonal averages is slightly different than the
-        exact bounds. Seasons are defined in 3-month periods beginning in
+        The nominal extrema of climo bounds are the bounds of th enominal
+        period of averaging, which in the case of seasonal averages is slightly
+        different than the exact bounds.
+        Seasons are defined in 3-month periods beginning in
         December. The period of multi-year average nominally from the beginning
         (Jan 1) of one year to the end (end Dec) of another year is actually
         shifted back 1 month because of this. This function adjusts to make
@@ -735,16 +736,18 @@ class CFDataset(Dataset):
         Standard practice in CF compliant files
         is to specify time bounds as a half-open interval ``[start, end)``,
         such that a time ``x`` is in the interval iff ``start <= x < end``.
+        (Note strict inequality.)
 
         However, in common *usage* (e.g., unique ids, file names, speech),
-        time bounds are expressed as closed intervals.
+        time bounds are expressed as closed intervals, ``[start, end]``,
+        ``start <= x <= end``
 
         This function accommodates both styles with the ``closed`` parameter.
-        When ``closed`` is ``True``, the half-open interval is returned unchanged
-        (except for adjustments for seasonal averaging period).
-        When ``closed`` is ``False``, the endpoint is returned with a small
+        When ``closed`` is ``True``, the endpoint is returned with a small
         amount (1 second) subtracted so that the interval is closed. This
         introduces a slight inaccuracy which for our purposes does not matter.
+        When ``closed`` is ``False``, the half-open interval is returned
+        unchanged (except for adjustments for seasonal averaging period).
         """
         units, calendar = self.time_var.units, self.time_var.calendar
 
@@ -781,7 +784,7 @@ class CFDataset(Dataset):
         return extrema
 
     @cached_property
-    def nominal_time_coverage(self):
+    def nominal_time_span(self):
         """Nominal time coverage of the file.
 
         In the case of multi-year means, nominal coverage is the nominal range
@@ -792,8 +795,8 @@ class CFDataset(Dataset):
         In the case of non multi-year mean files, nominal coverage is just
         the extrema of values in the time variable. A more natural and uniform
         definition would be the extrema of the time bounds, but time bounds are
-        not always present in our data files (sigh), so we use to this simpler
-        definition.
+        not always present in our data files, or not always correct (sigh),
+        so we use to this simpler definition.
         """
         if self.is_multi_year_mean:
             return self.time_bounds_extrema(nominal=True, closed=True)
@@ -1075,7 +1078,7 @@ class CFDataset(Dataset):
             'time_range': _cmor_formatted_time_range(
                 *to_datetime(
                     num2date(
-                        self.nominal_time_coverage,
+                        self.nominal_time_span,
                         self.time_var.units, self.time_var.calendar
                     )
                 )
