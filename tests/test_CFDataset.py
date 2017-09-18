@@ -2,19 +2,20 @@
 
     tiny_gcm: unprocessed GCM output
     tiny_downscaled: downscaled GCM output
-    tiny_hydromodel_obs: Interpolated observation-forced hydrological model output
+    tiny_hydromodel_obs: Interpolated observation-forced hydrological model
+        output
     tiny_hydromodel_gcm: GCM-forced hydrological model output
 
-The data in these files is very limited spatially and temporally (though valid) in order to reduce their size,
-and their global metadata is standard.
+The data in these files is very limited spatially and temporally (though valid)
+in order to reduce their size, and their global metadata is standard.
 
-All tests are parameterized over these files, which requires a little trickiness with fixtures.
-pytest doesn't directly support parametrizing over fixtures (which here delivers the test input file)
-To get around that, we use indirect fixtures, which are passed a parameter
-that they use to determine their behaviour, i.e. what input file to return.
+All tests are parameterized over these files, which requires a little
+trickiness with fixtures. ``pytest`` doesn't directly support parametrizing
+over fixtures (which here delivers the test input file) To get around that,
+we use indirect fixtures, which are passed a parameter that they use to
+determine their behaviour, i.e. what input file to return.
 """
 from datetime import datetime
-import os
 
 from pytest import mark, raises, approx
 
@@ -26,36 +27,52 @@ from nchelpers.date_utils import time_to_seconds
 from .helpers.nc_file_specs import spec
 from .helpers.time_values import suspicious_time_values, non_suspicious_time_values
 
-# TODO: Get a real GCM-driven hydromodel output file and adjust tiny_hydromodel_gcm.nc and its tests as necessary
+# TODO: Get a real GCM-driven hydromodel output file and adjust
+# tiny_hydromodel_gcm.nc and its tests as necessary
 
-# TODO: Create an observation-driven hydromodel output file and use it to create tiny_hydromodel_obs.nc and tests
-# Arelia is preparing such a file as of Apr 4.
+# TODO: Create an observation-driven hydromodel output file and use it to
+# create tiny_hydromodel_obs.nc and tests Arelia is preparing such a file as of
+# Apr 4.
 
-# TODO: Get an RCM output file and test against it. (Driven by property 'model_type'.)
+# TODO: Get an RCM output file and test against it.
+# (Driven by property 'model_type'.)
 
 
 @mark.parametrize('raw_dataset, converter, expected', [
     # absolute path
-    ('{cwd}/nchelpers/data/tiny_gcm.nc', None, '{cwd}/nchelpers/data/tiny_gcm.nc'),
-    ('{cwd}/nchelpers/data/tiny_gcm.nc', 'abspath', '{cwd}/nchelpers/data/tiny_gcm.nc'),
-    ('{cwd}/nchelpers/data/tiny_gcm.nc', 'normpath', '{cwd}/nchelpers/data/tiny_gcm.nc'),
-    ('{cwd}/nchelpers/data/tiny_gcm.nc', 'realpath', '{cwd}/nchelpers/data/tiny_gcm.nc'),
+    ('{cwd}/nchelpers/data/tiny_gcm.nc', None,
+     '{cwd}/nchelpers/data/tiny_gcm.nc'),
+    ('{cwd}/nchelpers/data/tiny_gcm.nc', 'abspath',
+     '{cwd}/nchelpers/data/tiny_gcm.nc'),
+    ('{cwd}/nchelpers/data/tiny_gcm.nc', 'normpath',
+     '{cwd}/nchelpers/data/tiny_gcm.nc'),
+    ('{cwd}/nchelpers/data/tiny_gcm.nc', 'realpath',
+     '{cwd}/nchelpers/data/tiny_gcm.nc'),
     # relative path
-    ('./nchelpers/data/tiny_gcm.nc', None, './nchelpers/data/tiny_gcm.nc'),
-    ('./nchelpers/data/tiny_gcm.nc', 'abspath', '{cwd}/nchelpers/data/tiny_gcm.nc'),
-    ('./nchelpers/data/tiny_gcm.nc', 'normpath', 'nchelpers/data/tiny_gcm.nc'),
-    ('./nchelpers/data/tiny_gcm.nc', 'realpath', '{cwd}/nchelpers/data/tiny_gcm.nc'),
+    ('./nchelpers/data/tiny_gcm.nc', None,
+     './nchelpers/data/tiny_gcm.nc'),
+    ('./nchelpers/data/tiny_gcm.nc', 'abspath',
+     '{cwd}/nchelpers/data/tiny_gcm.nc'),
+    ('./nchelpers/data/tiny_gcm.nc', 'normpath',
+     'nchelpers/data/tiny_gcm.nc'),
+    ('./nchelpers/data/tiny_gcm.nc', 'realpath',
+     '{cwd}/nchelpers/data/tiny_gcm.nc'),
     # relative path with symlink
-    ('./nchelpers/data/ln_tiny_gcm.nc', None, './nchelpers/data/ln_tiny_gcm.nc'),
-    ('./nchelpers/data/ln_tiny_gcm.nc', 'abspath', '{cwd}/nchelpers/data/ln_tiny_gcm.nc'),
-    ('./nchelpers/data/ln_tiny_gcm.nc', 'normpath', 'nchelpers/data/ln_tiny_gcm.nc'),
-    ('./nchelpers/data/ln_tiny_gcm.nc', 'realpath', '{cwd}/nchelpers/data/tiny_gcm.nc'),
+    ('./nchelpers/data/ln_tiny_gcm.nc', None,
+     './nchelpers/data/ln_tiny_gcm.nc'),
+    ('./nchelpers/data/ln_tiny_gcm.nc', 'abspath',
+     '{cwd}/nchelpers/data/ln_tiny_gcm.nc'),
+    ('./nchelpers/data/ln_tiny_gcm.nc', 'normpath',
+     'nchelpers/data/ln_tiny_gcm.nc'),
+    ('./nchelpers/data/ln_tiny_gcm.nc', 'realpath',
+     '{cwd}/nchelpers/data/tiny_gcm.nc'),
 ], indirect=['raw_dataset'])
 def test_filepath(cwd, raw_dataset, converter, expected):
     assert raw_dataset.filepath(converter) == expected.format(cwd=cwd)
 
 
-# Test CFDataset properties that can be tested with a simple equality test. Most are of this kind.
+# Test CFDataset properties that can be tested with a simple equality test.
+# Most are of this kind.
 @mark.parametrize('tiny_dataset, prop, expected', [
     ('gcm', 'first_MiB_md5sum', '3eb812cca9366973b41078b0bf19fe3b'),
     ('gcm', 'md5', '3eb812cca9366973b41078b0bf19fe3b'),
@@ -71,8 +88,10 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     # ('gcm', 'is_hydromodel_iobs_output', False), # TODO
     ('gcm', 'model_type', 'GCM'),
     ('gcm', 'ensemble_member', 'r1i1p1'),
-    ('gcm', 'cmor_filename', 'tasmax_day_BNU-ESM_historical_r1i1p1_19650101-19750101.nc'),
-    ('gcm', 'unique_id', 'tasmax_day_BNU-ESM_historical_r1i1p1_19650101-19750101'),
+    ('gcm', 'cmor_filename',
+     'tasmax_day_BNU-ESM_historical_r1i1p1_19650101-19750101.nc'),
+    ('gcm', 'unique_id',
+     'tasmax_day_BNU-ESM_historical_r1i1p1_19650101-19750101'),
 
     ('downscaled', 'first_MiB_md5sum', '57eb791548dd7f8dbda5fc12c96ff8af'),
     ('downscaled', 'md5', '57eb791548dd7f8dbda5fc12c96ff8af'),
@@ -88,8 +107,10 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     # ('downscaled', 'is_hydromodel_iobs_output', False), # TODO
     ('downscaled', 'model_type', 'GCM'),
     ('downscaled', 'ensemble_member', 'r1i1p1'),
-    ('downscaled', 'cmor_filename', 'tasmax_day_BCCAQ2_ACCESS1-0_historical+rcp45_r1i1p1_19600101-19911231.nc'),
-    ('downscaled', 'unique_id', 'tasmax_day_BCCAQ2_ACCESS1-0_historical-rcp45_r1i1p1_19600101-19911231'),
+    ('downscaled', 'cmor_filename',
+     'tasmax_day_BCCAQ2_ACCESS1-0_historical+rcp45_r1i1p1_19600101-19911231.nc'),
+    ('downscaled', 'unique_id',
+     'tasmax_day_BCCAQ2_ACCESS1-0_historical-rcp45_r1i1p1_19600101-19911231'),
 
     ('hydromodel_gcm', 'first_MiB_md5sum', 'b2b33021719da5cd63befe07185dbfe2'),
     ('hydromodel_gcm', 'md5', 'd4273596b44a70cecc7b5636e74d86b5'),
@@ -106,9 +127,11 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('hydromodel_gcm', 'model_type', 'GCM'),
     ('hydromodel_gcm', 'ensemble_member', 'r1i1p1'),
     ('hydromodel_gcm', 'cmor_filename',
-     'BASEFLOW+EVAP+GLAC_AREA_BAND+GLAC_MBAL_BAND+RUNOFF+SWE_BAND_day_VICGL+RGM+HydroCon_ACCESS1-0_historical+rcp45_r1i1p1_19840101-19951231.nc'),
+     'BASEFLOW+EVAP+GLAC_AREA_BAND+GLAC_MBAL_BAND+RUNOFF+SWE_BAND_day_VICGL+'
+     'RGM+HydroCon_ACCESS1-0_historical+rcp45_r1i1p1_19840101-19951231.nc'),
     ('hydromodel_gcm', 'unique_id', 
-     'BASEFLOW-EVAP-GLAC_AREA_BAND-GLAC_MBAL_BAND-RUNOFF-SWE_BAND_day_VICGL-RGM-HydroCon_ACCESS1-0_historical-rcp45_r1i1p1_19840101-19951231'),
+     'BASEFLOW-EVAP-GLAC_AREA_BAND-GLAC_MBAL_BAND-RUNOFF-SWE_BAND_day_VICGL-'
+     'RGM-HydroCon_ACCESS1-0_historical-rcp45_r1i1p1_19840101-19951231'),
 
     # Note: The following properties are not meaningful for a climatological 
     # output file and so are not tested:
@@ -119,71 +142,87 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('mClim_gcm', 'climatology_bounds_var_name', 'climatology_bnds'),
     ('mClim_gcm', 'is_multi_year_mean', True),
     ('mClim_gcm', 'time_resolution', 'monthly'),
-    ('mClim_gcm', 'is_unprocessed_gcm_output', True), # actually so, though the term 'unprocessed' here is misleading
+    # actually so, though the term 'unprocessed' here is misleading
+    ('mClim_gcm', 'is_unprocessed_gcm_output', True),
     ('mClim_gcm', 'is_downscaled_output', False),
     ('mClim_gcm', 'is_hydromodel_output', False),
     ('mClim_gcm', 'is_hydromodel_dgcm_output', False),
     # ('mClim_gcm', 'is_hydromodel_iobs_output', False), # TODO
     ('mClim_gcm', 'model_type', 'GCM'),
-    ('mClim_gcm', 'cmor_filename', 'tasmax_mClim_BNU-ESM_historical_r1i1p1_19650101-19701231.nc'),
-    ('mClim_gcm', 'unique_id', 'tasmax_mClim_BNU-ESM_historical_r1i1p1_19650101-19701231'),
+    ('mClim_gcm', 'cmor_filename',
+     'tasmax_mClim_BNU-ESM_historical_r1i1p1_19650101-19701231.nc'),
+    ('mClim_gcm', 'unique_id',
+     'tasmax_mClim_BNU-ESM_historical_r1i1p1_19650101-19701231'),
 
     ('sClim_gcm', 'first_MiB_md5sum', 'ecd2a0a28ffc12cc795d4e6b623543b6'),
     ('sClim_gcm', 'md5', 'ecd2a0a28ffc12cc795d4e6b623543b6'),
     ('sClim_gcm', 'climatology_bounds_var_name', 'climatology_bnds'),
     ('sClim_gcm', 'is_multi_year_mean', True),
     ('sClim_gcm', 'time_resolution', 'seasonal'),
-    ('sClim_gcm', 'is_unprocessed_gcm_output', True), # actually so, though the term 'unprocessed' here is misleading
+    # actually so, though the term 'unprocessed' here is misleading
+    ('sClim_gcm', 'is_unprocessed_gcm_output', True),
     ('sClim_gcm', 'is_downscaled_output', False),
     ('sClim_gcm', 'is_hydromodel_output', False),
     ('sClim_gcm', 'is_hydromodel_dgcm_output', False),
     # ('sClim_gcm', 'is_hydromodel_iobs_output', False), # TODO
     ('sClim_gcm', 'model_type', 'GCM'),
-    ('sClim_gcm', 'cmor_filename', 'tasmax_sClim_BNU-ESM_historical_r1i1p1_19650101-19701231.nc'),
-    ('sClim_gcm', 'unique_id', 'tasmax_sClim_BNU-ESM_historical_r1i1p1_19650101-19701231'),
+    ('sClim_gcm', 'cmor_filename',
+     'tasmax_sClim_BNU-ESM_historical_r1i1p1_19650101-19701231.nc'),
+    ('sClim_gcm', 'unique_id',
+     'tasmax_sClim_BNU-ESM_historical_r1i1p1_19650101-19701231'),
 
     ('aClim_gcm', 'first_MiB_md5sum', 'b002ec3839db4daffdad335ad0d31563'),
     ('aClim_gcm', 'md5', 'b002ec3839db4daffdad335ad0d31563'),
     ('aClim_gcm', 'climatology_bounds_var_name', 'climatology_bnds'),
     ('aClim_gcm', 'is_multi_year_mean', True),
     ('aClim_gcm', 'time_resolution', 'yearly'),
-    ('aClim_gcm', 'is_unprocessed_gcm_output', True), # actually so, though the term 'unprocessed' here is misleading
+    # actually so, though the term 'unprocessed' here is misleading
+    ('aClim_gcm', 'is_unprocessed_gcm_output', True),
     ('aClim_gcm', 'is_downscaled_output', False),
     ('aClim_gcm', 'is_hydromodel_output', False),
     ('aClim_gcm', 'is_hydromodel_dgcm_output', False),
     # ('aClim_gcm', 'is_hydromodel_iobs_output', False), # TODO
     ('aClim_gcm', 'model_type', 'GCM'),
-    ('aClim_gcm', 'cmor_filename', 'tasmax_aClim_BNU-ESM_historical_r1i1p1_19650101-19701231.nc'),
-    ('aClim_gcm', 'unique_id', 'tasmax_aClim_BNU-ESM_historical_r1i1p1_19650101-19701231'),
+    ('aClim_gcm', 'cmor_filename',
+     'tasmax_aClim_BNU-ESM_historical_r1i1p1_19650101-19701231.nc'),
+    ('aClim_gcm', 'unique_id',
+     'tasmax_aClim_BNU-ESM_historical_r1i1p1_19650101-19701231'),
 ], indirect=['tiny_dataset'])
 def test_simple_property(tiny_dataset, prop, expected):
     assert getattr(tiny_dataset, prop) == expected
 
 
-# Setup for testing `get_climatology_bounds_var_name`
-# and `get_is_multi_year_mean`, which depends on `get_climatology_bounds_var_name`.
+# Setup for testing ``get_climatology_bounds_var_name`` and
+# ``get_is_multi_year_mean``, which depends on
+# ``get_climatology_bounds_var_name``.
 #
-# These cases are shared between the two methods, so each case includes expected output for both.
+# These cases are shared between the two methods, so each case includes
+# expected output for both.
 # Each test function ignores the other's expected output parameter.
 # Each tuple correspnods to the following arguments: 
-#   `(file_spec, strict, expected_climatology_bounds_var_name, expected_is_multi_year_mean)`
+#   ``(file_spec, strict,
+#      expected_climatology_bounds_var_name, expected_is_multi_year_mean)``
 #
 # The alert reader will note that in all current test cases,
-#   `expected_is_multi_year_mean == bool(expected_climatology_bounds_var_name)`
-# However, this is not necessarily so, and at least one potential refinement to `is_multi_year_mean` will
-# change this relationship. Hence the explicit distinction between the two values.
+#   ``expected_is_multi_year_mean == bool(expected_climatology_bounds_var_name)``
+# However, this is not necessarily so, and at least one potential refinement
+# to ``is_multi_year_mean`` will change this relationship. Hence the explicit
+# distinction between the two values.
 
-likely_climo_bounds_var_names = ['climatology_bounds', 'climatology_bnds', 'climo_bounds', 'climo_bnds']
+likely_climo_bounds_var_names = ['climatology_bounds', 'climatology_bnds',
+                                 'climo_bounds', 'climo_bnds']
 likely_time_bounds_var_names = ['time_bounds', 'time_bnds']
 
-# Use a non-"suspcicious" number of time values to prevent false positives from that heuristic.
+# Use a non-"suspcicious" number of time values to prevent false positives
+# from that heuristic.
 narrow_time_bounds = [[0, 10], [10, 20]]
 narrow_time_values = [5, 15]
 
 wide_time_bounds = [[0, 3650], [30, 3680]]
 wide_time_values = [1825, 1855]
 
-# Starred components in lists would make this list construction much tidier, but Py <3.5 doesn't support that.
+# Starred components in lists would make this list construction much tidier,
+# but Py <3.5 doesn't support that. Ppptththhtpptth.
 climo_bounds_var_test_cases = (
     # Without time variable
     [
@@ -195,21 +234,26 @@ climo_bounds_var_test_cases = (
 
     # Without time:climatology or time:bounds attr; without bounds variable
     [
-        (spec(tb_attr=None, tb_var_name=None, tb_values=None, t_values=None), strict, None, False)
+        (spec(tb_attr=None, tb_var_name=None, tb_values=None, t_values=None),
+         strict, None, False)
         for strict in [False, True]
     ] +
 
     # With time:climatology attr; without climo bounds variable
     # Note: does not check existence of variable. Is this right?
     [
-        (spec(tb_attr={'climatology': 'foo'}, tb_var_name=None, tb_values=None, t_values=None), strict, 'foo', True)
+        (spec(tb_attr={'climatology': 'foo'}, tb_var_name=None,
+              tb_values=None, t_values=None),
+         strict, 'foo', True)
         for strict in [False, True]
     ] +
 
     # With time:climatology attr; with climo bounds variable
     # Use non-canonical bounds var name, to prevent false success with likely-name heuristic
     [
-        (spec(tb_attr={'climatology': 'foo'}, tb_var_name='foo', tb_values=None, t_values=None), False, 'foo', True)
+        (spec(tb_attr={'climatology': 'foo'}, tb_var_name='foo',
+              tb_values=None, t_values=None),
+         False, 'foo', True)
         for strict in [False, True]
     ] +
 
@@ -217,37 +261,48 @@ climo_bounds_var_test_cases = (
     # Note: no checking of bounds variable contents. Is this right?
     [
         # Non-strict
-        (spec(tb_attr=None, tb_var_name=name, tb_values=None, t_values=None), False, name, True)
+        (spec(tb_attr=None, tb_var_name=name, tb_values=None, t_values=None),
+         False, name, True)
         for name in likely_climo_bounds_var_names
     ] +
     [
         # Strict
-        (spec(tb_attr=None, tb_var_name=name, tb_values=None, t_values=None), True, None, False)
+        (spec(tb_attr=None, tb_var_name=name, tb_values=None, t_values=None),
+         True, None, False)
         for name in likely_climo_bounds_var_names
     ] +
 
     # Without time:climatology or time:bounds attr; without likely named climo bounds variable
     [
-        (spec(tb_attr=None, tb_var_name='foo', tb_values=None, t_values=None), strict, None, False)
+        (spec(tb_attr=None, tb_var_name='foo', tb_values=None, t_values=None),
+         strict, None, False)
         for strict in [False, True]
     ] +
 
     # With time:bounds attr; with time bounds too narrow (< 2 yr)
     [
-        (spec(tb_attr={'bounds': 'foo'}, tb_var_name='foo', tb_values=narrow_time_bounds, t_values=narrow_time_values), strict, None, False)
+        (spec(tb_attr={'bounds': 'foo'}, tb_var_name='foo',
+              tb_values=narrow_time_bounds, t_values=narrow_time_values),
+         strict, None, False)
         for strict in [False, True]
     ] +
 
     # With time:bounds attr; with time bounds broad enough (> 2 yr)
     [
-        (spec(tb_attr={'bounds': 'foo'}, tb_var_name='foo', tb_values=wide_time_bounds, t_values=wide_time_values), False, 'foo', True),
-        (spec(tb_attr={'bounds': 'foo'}, tb_var_name='foo', tb_values=wide_time_bounds, t_values=wide_time_values), True, None, False),
+        (spec(tb_attr={'bounds': 'foo'}, tb_var_name='foo',
+              tb_values=wide_time_bounds, t_values=wide_time_values),
+         False, 'foo', True),
+        (spec(tb_attr={'bounds': 'foo'}, tb_var_name='foo',
+              tb_values=wide_time_bounds, t_values=wide_time_values),
+         True, None, False),
     ] +
 
     # Without time:climatology or time:bounds attr; with likely named time bounds var;
     # with time bounds too narrow (10 d < 2 yr)
     [
-        (spec(tb_attr=None, tb_var_name=name, tb_values=narrow_time_bounds, t_values=narrow_time_values), strict, None, False)
+        (spec(tb_attr=None, tb_var_name=name,
+              tb_values=narrow_time_bounds, t_values=narrow_time_values),
+         strict, None, False)
         for name in likely_time_bounds_var_names
         for strict in [False, True]
     ] +
@@ -256,12 +311,16 @@ climo_bounds_var_test_cases = (
     # with time bounds broad enough (3650 d > 2 yr)
     [
         # Non-strict
-        (spec(tb_attr=None, tb_var_name=name, tb_values=wide_time_bounds, t_values=wide_time_values), False, name, True)
+        (spec(tb_attr=None, tb_var_name=name,
+              tb_values=wide_time_bounds, t_values=wide_time_values),
+         False, name, True)
         for name in likely_time_bounds_var_names
     ] +
     [
         # Strict
-        (spec(tb_attr=None, tb_var_name=name, tb_values=wide_time_bounds, t_values=wide_time_values), True, None, False)
+        (spec(tb_attr=None, tb_var_name=name,
+              tb_values=wide_time_bounds, t_values=wide_time_values),
+         True, None, False)
         for name in likely_time_bounds_var_names
     ]
 )
@@ -287,16 +346,21 @@ def test_climatology_bounds_var_name(fake_nc_dataset, strict, var_name, _):
     # with time variable with suspicious length and contents
     [
         # Non-strict
-        (spec(tb_attr=None, tb_var_name=None, tb_values=None, t_values=t_values), False, None, True)
+        (spec(tb_attr=None, tb_var_name=None,
+              tb_values=None, t_values=t_values),
+         False, None, True)
         for t_values in suspicious_time_values
     ] +
     [
         # Strict
-        (spec(tb_attr=None, tb_var_name=None, tb_values=None, t_values=t_values), True, None, False)
+        (spec(tb_attr=None, tb_var_name=None,
+              tb_values=None, t_values=t_values), True, None, False)
         for t_values in suspicious_time_values
     ] +
     [
-        (spec(tb_attr=None, tb_var_name=None, tb_values=None, t_values=t_values), strict, None, False)
+        (spec(tb_attr=None, tb_var_name=None,
+              tb_values=None, t_values=t_values), strict,
+         None, False)
         for t_values in non_suspicious_time_values
         for strict in [False, True]
     ]
@@ -531,7 +595,8 @@ def test_axes_dim(tiny_dataset, expected):
     ('gcm', {'lat', 'lon'}, {'tasmax'}),
     ('gcm', {'foo'}, set()),
     ('downscaled', set(), {'tasmax'}),
-    ('hydromodel_gcm', set(), {'RUNOFF', 'BASEFLOW', 'EVAP', 'GLAC_MBAL_BAND', 'GLAC_AREA_BAND', 'SWE_BAND'}),
+    ('hydromodel_gcm', set(), {'RUNOFF', 'BASEFLOW', 'EVAP', 'GLAC_MBAL_BAND',
+                               'GLAC_AREA_BAND', 'SWE_BAND'}),
     ('mClim_gcm', set(), {'tasmax'}),
 ], indirect=['tiny_dataset'])
 def test_dependent_varnames(tiny_dataset, dim_names, expected):
@@ -598,23 +663,32 @@ def test_climo_periods(tiny_dataset, expected):
 
 
 @mark.parametrize('tiny_dataset, pattern, all_vars', [
-    ('gcm', '{}_msaClim_BNU-ESM_historical_r1i1p1_20000101-20101231.nc', 'tasmax'),
-    ('downscaled', '{}_msaClim_BCCAQ2_ACCESS1-0_historical+rcp45_r1i1p1_20000101-20101231.nc', 'tasmax'),
+    ('gcm',
+     '{}_msaClim_BNU-ESM_historical_r1i1p1_20000101-20101231.nc',
+     'tasmax'),
+    ('downscaled',
+     '{}_msaClim_BCCAQ2_ACCESS1-0_historical+rcp45_r1i1p1_20000101-20101231.nc',
+     'tasmax'),
     ('hydromodel_gcm',
-     '{}_msaClim_VICGL+RGM+HydroCon_ACCESS1-0_historical+rcp45_r1i1p1_20000101-20101231.nc',
+     '{}_msaClim_VICGL+RGM+HydroCon_ACCESS1-0_'
+     'historical+rcp45_r1i1p1_20000101-20101231.nc',
      'BASEFLOW+EVAP+GLAC_AREA_BAND+GLAC_MBAL_BAND+RUNOFF+SWE_BAND'),
     # Not relevant for climo data sets
 ], indirect=['tiny_dataset'])
 @mark.parametrize('variable', [None, 'var'])
 def test_climo_output_filename(tiny_dataset, pattern, all_vars, variable):
-    assert tiny_dataset.climo_output_filename(datetime(2000, 1, 1), datetime(2010, 12, 31), variable) == \
-           pattern.format(variable or all_vars)
+    assert tiny_dataset.climo_output_filename(
+        datetime(2000, 1, 1),
+        datetime(2010, 12, 31),
+        variable
+    ) == pattern.format(variable or all_vars)
 
 
 class TestIndirectValues:
     """Test the indirect value feature of CFDataset.
     See CFDataset class docstring for explanation of indirect values.
-    To test, we use an otherwise empty CFDataset file populated with properties (attributes) for testing.
+    To test, we use an otherwise empty CFDataset file populated with
+    properties (attributes) for testing.
     For its contents, see conftest.py.
     """
 
@@ -622,8 +696,10 @@ class TestIndirectValues:
         assert not indir_dataset.is_indirected('one')
         assert indir_dataset.is_indirected('uno')
         assert indir_dataset.is_indirected('un')
-        assert indir_dataset.is_indirected('foo')  # even if the indirection is circular
-        assert indir_dataset.is_indirected('baz')  # even if the indirected property does not exist
+        # even if the indirection is circular
+        assert indir_dataset.is_indirected('foo')
+        # even if the indirected property does not exist
+        assert indir_dataset.is_indirected('baz')
 
     def test_get_direct_value(self, indir_dataset):
         assert indir_dataset.get_direct_value('one') == 1

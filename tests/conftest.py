@@ -70,7 +70,9 @@ def fake_nc_dataset(request, temp_nc):
 
 @fixture
 def indir_dataset(tmpdir):
-    """Yield an otherwise empty netCDF file containing some indirected attributes for testing."""
+    """Yield an otherwise empty netCDF file containing some indirected
+    attributes for testing.
+    """
     fp = tmpdir.join('indirect_test.nc')
     with CFDataset(fp, mode='w') as cf:
         # ordinary values
