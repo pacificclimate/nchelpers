@@ -565,6 +565,9 @@ class CFDataset(Dataset):
         if not self.is_multi_year_mean:
             raise ValueError('climatology bounds are defined only for files'
                              'containing multi-year means')
+        if self.climatology_bounds_var_name is None:
+            raise ValueError(
+                'No climatology bounds variable is detectable in this file.')
         climatology_bounds_var = self.variables[self.climatology_bounds_var_name]
         return climatology_bounds_var[...]
 
