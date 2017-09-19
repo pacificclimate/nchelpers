@@ -93,8 +93,8 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('gcm', 'unique_id',
      'tasmax_day_BNU-ESM_historical_r1i1p1_19650101-19750101'),
 
-    ('downscaled', 'first_MiB_md5sum', '57eb791548dd7f8dbda5fc12c96ff8af'),
-    ('downscaled', 'md5', '57eb791548dd7f8dbda5fc12c96ff8af'),
+    ('downscaled', 'first_MiB_md5sum', '6ebca934615ad7e6bd328bcc6fa9058b'),
+    ('downscaled', 'md5', '6ebca934615ad7e6bd328bcc6fa9058b'),
     ('downscaled', 'climatology_bounds_var_name', None),
     ('downscaled', 'is_multi_year_mean', False),
     ('downscaled', 'time_range', (715509.5, 727196.5)),
@@ -112,8 +112,8 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('downscaled', 'unique_id',
      'tasmax_day_BCCAQ2_ACCESS1-0_historical-rcp45_r1i1p1_19600101-19911231'),
 
-    ('hydromodel_gcm', 'first_MiB_md5sum', 'b2b33021719da5cd63befe07185dbfe2'),
-    ('hydromodel_gcm', 'md5', 'd4273596b44a70cecc7b5636e74d86b5'),
+    ('hydromodel_gcm', 'first_MiB_md5sum', '6544f8a39ba722e2085677525269c883'),
+    ('hydromodel_gcm', 'md5', '36af1a6d4665fecf0d1a727a7cbdc6ef'),
     ('hydromodel_gcm', 'climatology_bounds_var_name', None),
     ('hydromodel_gcm', 'is_multi_year_mean', False),
     ('hydromodel_gcm', 'time_range', (0.0, 4382.0)),
