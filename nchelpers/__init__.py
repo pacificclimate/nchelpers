@@ -473,9 +473,9 @@ class CFDataset(Dataset):
             if self.dataset.is_unprocessed_gcm_output:
                 prefix = ''
             elif self.dataset.is_downscaled_output:
-                prefix = 'driving_'
+                prefix = 'GCM__'
             elif self.dataset.is_hydromodel_dgcm_output:
-                prefix = 'forcing_driving_'
+                prefix = 'downscaling__GCM__'
             elif self.dataset.is_hydromodel_iobs_output:
                 raise CFAttributeError(
                     'GCM attributes have no meaning for a hydrological model '
@@ -1253,22 +1253,22 @@ class CFDataset(Dataset):
             )
         elif self.is_downscaled_output:
             components.update(
-                downscaling_method=self.downscaling_method_id,
-                model=self.driving_model_id,
-                experiment=_replace_commas(self.driving_experiment_id),
+                downscaling_method=self.method_id,
+                model=self.gcm.model_id,
+                experiment=_replace_commas(self.gcm.experiment_id),
                 geo_info=getattr(self, 'domain', None)
             )
         elif self.is_hydromodel_dgcm_output:
             components.update(
-                hydromodel_method=_replace_commas(self.hydromodel_method_id),
-                model=self.forcing_driving_model_id,
-                experiment=_replace_commas(self.forcing_driving_experiment_id),
+                hydromodel_method=_replace_commas(self.method_id),
+                model=self.gcm.model_id,
+                experiment=_replace_commas(self.gcm.experiment_id),
                 geo_info=getattr(self, 'domain', None)
             )
         elif self.is_hydromodel_iobs_output:
             components.update(
-                hydromodel_method=_replace_commas(self.hydromodel_method_id),
-                obs_dataset_id=self.forcing_obs_dataset_id,
+                hydromodel_method=_replace_commas(self.method_id),
+                obs_dataset_id=self.observations__dataset_id,
                 geo_info=getattr(self, 'domain', None)
             )
 
