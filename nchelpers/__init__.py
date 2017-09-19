@@ -50,6 +50,22 @@ standard_tres_to_mip_table = {
 }
 
 
+def _cmor_formatted_time_range(t_min, t_max, time_resolution='daily'):
+    """Format a time range as string in YYYY[mm[dd]] format, min and max
+    separated by a dash."""
+    try:
+        fmt = {
+            'yearly': '%Y',
+            'monthly': '%Y%m',
+            'daily': '%Y%m%d'
+        }[time_resolution]
+    except KeyError:
+        raise CFValueError(
+            "Cannot format a time range with resolution '{}' "
+            "(only yearly, monthly or daily)".format(time_resolution))
+    return '{}-{}'.format(t_min.strftime(fmt), t_max.strftime(fmt))
+
+
 def cmor_type_filename(extension='', **component_values):
     """Return a filename built from supplied component values, following the a
     CMOR-based filename standards in
@@ -82,6 +98,32 @@ def cmor_type_filename(extension='', **component_values):
            + extension
 
 
+def _replace_commas(s, sep='+'):
+    """Return a string constructed by joining with `sep` the substrings of `s`
+    delimited by commas and arbitrary spaces.
+
+    :param s: (str) string to split on commas and join with sep
+    :param sep: (str) separator string for join
+    :return: see above
+    """
+    return re.sub(r'\s*,\s*', sep, s)
+
+
+def _indirection_info(value):
+    """Return (True, <property name>) iff ``value`` is a string that indirects
+    to another property value.
+    Otherwise return (False, None).
+    See CFDataset docstring for explanation of indirect values.
+
+    :param value: (str) literal value (uninterpreted under indirection rule)
+        of a property
+    :return: (tuple) (is_indirected, property_name) see above
+    """
+    if isinstance(value, six.string_types) and value[0] == '@':
+        return True, value[1:]
+    return False, None
+
+
 def standard_climo_periods(calendar='standard'):
     """Returns a dict containing the start and end dates, under the specified
     calendar, of standard climatological periods, keyed by abbreviations for
@@ -103,48 +145,6 @@ def standard_climo_periods(calendar='standard'):
     end_day = 30 if calendar == '360_day' else 31
     return {k: (datetime(start_year, 1, 1), datetime(end_year, 12, end_day))
             for k, (start_year, end_year) in standard_climo_years.items()}
-
-
-def _replace_commas(s, sep='+'):
-    """Return a string constructed by joining with `sep` the substrings of `s`
-    delimited by commas and arbitrary spaces.
-
-    :param s: (str) string to split on commas and join with sep
-    :param sep: (str) separator string for join
-    :return: see above
-    """
-    return re.sub(r'\s*,\s*', sep, s)
-
-
-def _cmor_formatted_time_range(t_min, t_max, time_resolution='daily'):
-    """Format a time range as string in YYYY[mm[dd]] format, min and max
-    separated by a dash."""
-    try:
-        fmt = {
-            'yearly': '%Y',
-            'monthly': '%Y%m',
-            'daily': '%Y%m%d'
-        }[time_resolution]
-    except KeyError:
-        raise CFValueError(
-            "Cannot format a time range with resolution '{}' "
-            "(only yearly, monthly or daily)".format(time_resolution))
-    return '{}-{}'.format(t_min.strftime(fmt), t_max.strftime(fmt))
-
-
-def _indirection_info(value):
-    """Return (True, <property name>) iff ``value`` is a string that indirects
-    to another property value.
-    Otherwise return (False, None).
-    See CFDataset docstring for explanation of indirect values.
-
-    :param value: (str) literal value (uninterpreted under indirection rule)
-        of a property
-    :return: (tuple) (is_indirected, property_name) see above
-    """
-    if isinstance(value, six.string_types) and value[0] == '@':
-        return True, value[1:]
-    return False, None
 
 
 class CFDataset(Dataset):
@@ -243,6 +243,9 @@ class CFDataset(Dataset):
             'strict_metadata': kwargs.get('strict_metadata', False)
         }
 
+    ###########################################################################
+    # Whole file descriptors
+
     def filepath(self, converter=None):
         """Return the filepath, optionally processed by a converter,
         either none (no conversion) or one of the ``os.path`` path
@@ -260,8 +263,32 @@ class CFDataset(Dataset):
         except:
             raise ValueError(
                 "Expected convert to have value in {}, but got '{}'"
-                .format(converters.keys(), converter)
+                    .format(converters.keys(), converter)
             )
+
+    # noinspection PyPep8Naming
+    @property
+    def first_MiB_md5sum(self):
+        """MD5 digest of first MiB of this file"""
+        m = hashlib.md5()
+        with open(self.filepath(), 'rb') as f:
+            m.update(f.read(2**20))
+        return m.hexdigest()
+
+    @property
+    def md5(self):
+        """MD5 hex digest of entirety of this file.
+        Parsimonious with memory. Adopted from
+        https://stackoverflow.com/a/3431838
+        """
+        hash_md5 = hashlib.md5()
+        with open(self.filepath(), 'rb') as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
+
+    ###########################################################################
+    # Attribute retrieval
 
     def is_indirected(self, name):
         """Return True iff the property named has an indirect value.
@@ -317,26 +344,446 @@ class CFDataset(Dataset):
         # Regular old value
         return value
 
-    # noinspection PyPep8Naming
-    @property
-    def first_MiB_md5sum(self):
-        """MD5 digest of first MiB of this file"""
-        m = hashlib.md5()
-        with open(self.filepath(), 'rb') as f:
-            m.update(f.read(2**20))
-        return m.hexdigest()
+    ###########################################################################
+    # Unified metadata interface
+
+    class UnifiedMetadata(object):
+        """Presents a unified interface to certain global metadata attributes
+        in a CFDataset object.
+
+        Why?
+        - A ``CFDataset`` can have metadata attributes named according to CMIP3
+          or CMIP5 standards, depending on the file's origin (which is indicated
+          by ``project_id``).
+        - We want a common interface, i.e., common names, for a selected set
+          of those differently named attributes.
+        - We must avoid shadowing existing properties and methods on a
+          ``CFDataset`` (or really, a ``netCDF4.Dataset``) object
+          unified names we'd like to use for these metadata properties.
+        - We'd like to present them as properties instead of as a dict,
+          which has uglier syntax.
+
+        How?
+        - Create a property called ``metadata`` on ``CFDataset`` that is an
+          instance of this class.
+        """
+
+        def __init__(self, dataset):
+            self.dataset = dataset
+
+        _aliases = {
+            # Original aliases - some mangle the terminology somewhat,
+            # at least by CMIP5 notions
+            'project': {
+                'CMIP3': 'project_id',
+                'CMIP5': 'project_id',
+            },
+            'institution': {
+                'CMIP3': 'institute',
+                'CMIP5': 'institute_id',
+            },
+            'model': {
+                'CMIP3': 'source',
+                'CMIP5': 'gcm.model_id',
+            },
+            'emissions': {
+                'CMIP3': 'experiment_id',
+                'CMIP5': 'gcm.experiment_id',
+            },
+            'run': {
+                'CMIP3': 'realization',
+                'CMIP5': 'ensemble_member',  # uses prefixed values
+            },
+            # Better aliases - adhere to CMIP5 terminology
+            'institute': {
+                'CMIP3': 'institute',
+                'CMIP5': 'institute_id',
+            },
+            'experiment': {
+                'CMIP3': 'experiment_id',
+                'CMIP5': 'gcm.experiment_id',
+            },
+            'ensemble_member': {
+                'CMIP3': 'realization',
+                'CMIP5': 'ensemble_member',  # uses prefixed values
+            },
+        }
+
+        def __getattr__(self, alias):
+            def missing_attribute(name):
+                return CFAttributeError(
+                    "Expected file to contain attribute '{}', "
+                    "but no such attribute exists".format(name)
+                )
+
+            try:
+                project_id = self.dataset.project_id
+            except AttributeError:
+                raise missing_attribute('project_id')
+
+            if project_id not in ['CMIP3', 'CMIP5']:
+                raise CFValueError(
+                    "Expected file to have project id of 'CMIP3' or 'CMIP5', "
+                    "found '{}'".format(project_id)
+                )
+
+            if alias not in self._aliases.keys():
+                raise CFAttributeError(
+                    "No such unified attribute: '{}'".format(alias))
+
+            def getdottedattr(obj, dotted_attr):
+                attrs = dotted_attr.split('.')
+                value = obj
+                for attr in attrs:
+                    value = getattr(value, attr)
+                return value
+
+            attr = self._aliases[alias][project_id]
+            try:
+                return getdottedattr(self.dataset, attr)
+            except:
+                raise missing_attribute(attr)
 
     @property
-    def md5(self):
-        """MD5 hex digest of entirety of this file.
-        Parsimonious with memory. Adopted from
-        https://stackoverflow.com/a/3431838
+    def metadata(self):
+        """Prefix for all aliased (common-name) global metadata attributes"""
+        return self.UnifiedMetadata(self)
+
+    ###########################################################################
+    # Auto-prefixed GCM metadata interface
+
+    class AutoGcmPrefixedAttribute(object):
+        """Access attributes describing the original GCM input data used by
+        the program that generated this file.
+
+        In downstream processing of GCM files (e.g., downscaling), attributes
+        describing the input GCM (e.g., 'model_id') are recorded in the output
+        file with prefixes (e.g., 'driving_'). This class adds an automatically
+        computed prefix to a base property name before accessing it. Type of
+        file, and therefore prefix, is determined from the content of the file.
+
+        NOTE: This class will prefix any base attribute name, no matter
+        whether the prefixed name exists in the file.
         """
-        hash_md5 = hashlib.md5()
-        with open(self.filepath(), 'rb') as f:
-            for chunk in iter(lambda: f.read(4096), b""):
-                hash_md5.update(chunk)
-        return hash_md5.hexdigest()
+
+        def __init__(self, dataset):
+            self.__dict__['dataset'] = dataset
+
+        def _prefixed(self, attr):
+            if self.dataset.is_unprocessed_gcm_output:
+                prefix = ''
+            elif self.dataset.is_downscaled_output:
+                prefix = 'driving_'
+            elif self.dataset.is_hydromodel_dgcm_output:
+                prefix = 'forcing_driving_'
+            elif self.dataset.is_hydromodel_iobs_output:
+                raise CFAttributeError(
+                    'GCM attributes have no meaning for a hydrological model '
+                    'forced by observational data')
+            else:
+                raise CFAttributeError(
+                    'Cannot generate automatic GCM attribute prefixes for a '
+                    'file without a recognized type')
+
+            return prefix + attr
+
+        def __getattr__(self, attr):
+            prefixed_attr = self._prefixed(attr)
+            try:
+                return getattr(self.dataset, prefixed_attr)
+            except AttributeError:
+                raise CFAttributeError(
+                    "Expected file to contain attribute '{}' but no such "
+                    "attribute exists".format(self._prefixed(attr)))
+
+        def __setattr__(self, attr, value):
+            prefixed_attr = self._prefixed(attr)
+            return setattr(self.dataset, prefixed_attr, value)
+
+    @property
+    def gcm(self):
+        return self.AutoGcmPrefixedAttribute(self)
+
+    ###########################################################################
+    # Other special metadata methods
+
+    @property
+    def ensemble_member(self):
+        """CMIP5 standard ensemble member code for this file"""
+        components = {}
+        for component, attr in [
+            ('r', 'realization'),
+            ('i', 'initialization_method'),
+            ('p', 'physics_version')
+        ]:
+            components[component] = getattr(self.gcm, attr)
+        return 'r{r}i{i}p{p}'.format(**components)
+
+    @property
+    def model_type(self):
+        """String indicating what type of model the file contains.
+        Supports modelmeta/mm_cataloguer/index_netcdf.py.
+        Really rudimentary decision making about model type.
+        """
+        if self.metadata.project == 'NARCCAP' or \
+                        self.metadata.project not in ('IPCC Fourth Assessment', 'CMIP5'):
+            return 'RCM'
+        else:
+            return 'GCM'
+
+    ###########################################################################
+    # File content type
+
+    @property
+    def is_multi_year_mean(self):
+        """Return True if the metadata indicates that the data consists of a
+        multi-year mean, determined by testing if  the file contains a
+        climatological time bounds variable.
+
+        See http://cfconventions.org/Data/cf-conventions/cf-conventions-1.6/build/
+        cf-conventions.html#climatological-statistics,
+        section 7.4
+
+        In non-strict mode, failing metadata that conforms to the above
+        standard, we use heuristics. These heuristics are emobodied here and in
+        `climatology_bounds_var_name` in non-strict mode.
+
+        If `self._cf_dataset_options['strict_metadata']` is True, use strict
+        rules only for determining if this file contains multi-year means.
+        Otherwise, use heuristics as well.
+        """
+        # If there is no time axis, this can't be a file of temporal means.
+        try:
+            time_var = self.time_var
+        except CFValueError:
+            return False
+
+        # Strict and non-strict rules, according to flag
+        if self.climatology_bounds_var_name:
+            # TODO: Output of `climatology_bounds_var_name` does not
+            # necessarily exist in the file. Should we check for existence?
+            return True
+
+        # Strict rules begin here
+        if self._cf_dataset_options['strict_metadata']:
+            return False
+
+        # Additional non-strict heuristics begin here
+
+        # Heuristic: Time variable has "suspicious" length:
+        # 1, 4, 12, 5, 13, 16, 17 (yearly, seasonal, monthly, and
+        # various concatenations thereof)
+        # AND time variable has likely values (mid-month, mid-season, mid-year)
+
+        def check_monthly(time_steps):
+            def check(t, month):
+                return t.month == month and t.day in {14, 15, 16}
+            return all(check(next(time_steps), month)
+                       for month in range(1, 13))
+
+        def check_seasonal(time_steps):
+            def check(t, month):
+                return t.month == month and t.day in {15, 16, 17}
+            return all(check(next(time_steps), month)
+                       for month in (1, 4, 7, 10))
+
+        def check_yearly(time_steps):
+            t = next(time_steps)
+            return ((t.month == 6 and t.day == 30) or
+                    (t.month == 7 and t.day in {1, 2}))
+
+        try:
+            check_intervals = {
+                1: (check_yearly,),
+                4: (check_seasonal,),
+                12: (check_monthly,),
+                5: (check_seasonal, check_yearly),
+                13: (check_monthly, check_yearly),
+                16: (check_monthly, check_seasonal),
+                17: (check_monthly, check_seasonal, check_yearly),
+            }[time_var.size]
+        except KeyError:
+            pass  # No suspcious lengths: Try next heuristic
+        else:
+            time_steps = (t for t in self.time_steps['datetime'])
+            if all(check(time_steps) for check in check_intervals):
+                return True
+
+        # Alas
+        return False
+
+    @property
+    def is_unprocessed_gcm_output(self):
+        """True iff the content of the file is unprocessed GCM output."""
+        return self.product == 'output'
+
+    @property
+    def is_downscaled_output(self):
+        """True iff the content of the file is downscaling output."""
+        return self.product == 'downscaled output'
+
+    @property
+    def is_hydromodel_output(self):
+        """True iff the content of the file is hydrological model output of
+        any kind."""
+        return self.product == 'hydrological model output'
+
+    @property
+    def is_hydromodel_dgcm_output(self):
+        """True iff the content of the file is output of a hydrological model
+        forced by downscaled GCM data."""
+        return self.is_hydromodel_output and \
+               self.forcing_type == 'downscaled gcm'
+
+    @property
+    def is_hydromodel_iobs_output(self):
+        """True iff the content of the file is output of a hydrological
+        model forced by interpolated observational data."""
+        return self.is_hydromodel_output and \
+               self.forcing_type == 'gridded observations'
+
+    ###########################################################################
+    # Dimensions and axes
+
+    def axes_dim(self, dim_names=None):
+        """Return a dictionary mapping canonical axis names to specified
+        dimension names (or all dimensions in file).
+
+        ASSUMPTION: There is at most one dimension (name) per canonical axis
+        name. If not, the mapping inversion loses information.
+
+        Canonical axis names are 'X' (longitude), 'Y' (latitude), 'Z' (level),
+        'S' (reduced XY grid), 'T' (time).
+
+        For information on reduced grids, see
+        http://www.unidata.ucar.edu/blogs/developer/entry/cf_reduced_grids.
+
+        :param dim_names: (str) List of names of dimensions of interest,
+        None for all dimensions in file
+        :return: (dict) Dictionary mapping canonical axis name to dimension
+        name, for specified dimension names
+        """
+        # Invert {dim_name: axis} to {axis: dim_name}
+        return {axis: dim_name
+                for dim_name, axis in self.dim_axes(dim_names).items()}
+
+    def dim_axes(self, dim_names=None):
+        """Return a dictionary mapping specified dimension names (or all
+        dimensions in file) to the canonical axis name for each dimension.
+
+        Canonical axis names are 'X' (longitude), 'Y' (latitude), 'Z' (level),
+        'S' (reduced XY grid), 'T' (time).
+
+        For information on reduced grids, see
+        http://www.unidata.ucar.edu/blogs/developer/entry/cf_reduced_grids.
+
+        :param dim_names: (str) List of names of dimensions of interest,
+            None for all dimensions in file
+        :return: (dict) Dictionary mapping dimension name to canonical axis
+            name, for specified dimension names
+        """
+        if not dim_names:
+            dim_names = self.dim_names()
+
+        if len(dim_names) == 0:
+            return {}
+
+        # Start with our best guess
+        dim_name_to_axis = self.dim_axes_from_names(dim_names)
+
+        # Then fill in the rest from the 'axis' attributes
+        for dim_name in dim_name_to_axis.keys():
+            if dim_name in self.dimensions and dim_name in self.variables \
+                    and hasattr(self.variables[dim_name], 'axis'):
+                dim_name_to_axis[dim_name] = self.variables[dim_name].axis
+
+                # A reduced grid dimension has the 'compress' attribute.
+                # This kind of dimension is labelled as a 'space' (S) dimension.
+                if hasattr(self.variables[dim_name], 'compress'):
+                    dim_name_to_axis[dim_name] = 'S'
+
+        return dim_name_to_axis
+
+    def dim_axes_from_names(self, dim_names=None):
+        """Map names of dimensions in file to canonical axis names, based on
+        well-known dimension names for axes.
+
+        Canonical axis names are 'X' (longitude), 'Y' (latitude), 'Z' (level),
+        'S' (reduced XY grid), 'T' (time).
+
+        For information on reduced grids, see
+        http://www.unidata.ucar.edu/blogs/developer/entry/cf_reduced_grids.
+
+        Dimensions must be named with well-known names (e.g., 'latitude') to
+        be mapped. See dict ``dim_to_axis`` for dimension names recognized.
+
+        :param dim_names: (list of str) List of names of dimensions of interest,
+            None for all dimensions in file
+        :return: (dict) Dictionary mapping canonical axis name back to
+            dimension name, for specified dimension names
+        """
+        if not dim_names:
+            dim_names = self.dim_names()
+        dim_to_axis = {
+            'lat': 'Y',
+            'latitude': 'Y',
+            'lon': 'X',
+            'longitude': 'X',
+            'xc': 'X',
+            'yc': 'Y',
+            'x': 'X',
+            'y': 'Y',
+            'time': 'T',
+            'timeofyear': 'T',
+            'plev': 'Z',
+            'lev': 'Z',
+            'level': 'Z',
+            'depth': 'Z',
+        }
+        return {dim: dim_to_axis[dim]
+                for dim in dim_names if dim in dim_to_axis}
+
+    def dim_names(self, var_name=None):
+        """Return names of dimensions of a specified variable (or all
+        dimensions) in this file.
+
+        :param var_name: (str) Name of variable of interest
+            (or None for all dimensions)
+        :return (tuple): A tuple containing the names of the dimensions of
+            the specified variable or of all dimensions in the file
+        """
+        if var_name:
+            return self.variables[var_name].dimensions
+        else:
+            return tuple(k for k in self.dimensions.keys())
+
+    def reduced_dims(self, var_name=None):
+        """Return a dict containing the names of the X and Y dimensions of
+        the named reduced spatial variable.
+         If the named variable is not attributed as a reduced variable,
+         return an empty dict.
+         If the number of reduced dimensions is not 2, raise an error.
+
+         Documentation on "compression by gathering", which this method deals
+         with:
+         http://cfconventions.org/cf-conventions/v1.6.0/cf-conventions.html#compression-by-gathering
+
+        :param var_name: (str) name of reduced spatial variable
+        :return:
+        """
+        axes_dim = self.axes_dim()
+        if 'S' not in axes_dim:
+            return {}
+        compressed_axis_names = self.variables[var_name].compress.split()
+        if len(compressed_axis_names) != 2:
+            raise CFValueError(
+                "Expected '{}:compress' to contain 2 variable names, found {}"
+                    .format(var_name, compressed_axis_names))
+        # TODO: Verify that compressed axis names are always in the order Y, X
+        return {'X': compressed_axis_names[1], 'Y': compressed_axis_names[0]}
+
+    ###########################################################################
+    # Variables - general
 
     def dependent_varnames(self, dim_names=set()):
         """A list of the names of the dependent (non-dimension) variables
@@ -385,149 +832,122 @@ class CFDataset(Dataset):
                 non_dependent_var_names.update(variable.coordinates.split())
         return [name for name in var_names - non_dependent_var_names]
 
-    def dim_names(self, var_name=None):
-        """Return names of dimensions of a specified variable (or all
-        dimensions) in this file.
-        
-        :param var_name: (str) Name of variable of interest
-            (or None for all dimensions)
-        :return (tuple): A tuple containing the names of the dimensions of
-            the specified variable or of all dimensions in the file
+    def var_bounds_and_values(self, var_name, bounds_var_name=None):
+        """Return a list of tuples describing the bounds and values of a
+        NetCDF variable, one tuple per variable value, defining
+        (lower_bound, value, upper_bound)
+
+        :param var_name: (str) name of NetCDF variable
+        :param bounds_var_name: name of bounds variable; if not specified,
+            use variable.bounds
+        :return: list of tuples of the form (lower_bound, value, upper_bound)
         """
-        if var_name:
-            return self.variables[var_name].dimensions
+        variable = self.variables[var_name]
+        values = variable[:]
+        bounds_var_name = bounds_var_name or getattr(variable, 'bounds', None)
+
+        if bounds_var_name:
+            # Explicitly defined bounds: use them
+            bounds_var = self.variables[bounds_var_name]
+            return zip(bounds_var[:, 0], values, bounds_var[:, 1])
         else:
-            return tuple(k for k in self.dimensions.keys())
+            # No explicit bounds: manufacture them
+            midpoints = (
+                # fake lower "midpoint", half of previous step below first value
+                [(3*values[0] - values[1]) / 2] +
+                # midpoints of values
+                [(values[i] + values[i+1]) / 2 for i in range(len(values)-1)] +
+                # fake upper "midpoint", half of previous step above last value
+                [(3*values[-1] - values[-2]) / 2]
+            )
+            return zip(midpoints[:-1], values, midpoints[1:])
 
-    def dim_axes_from_names(self, dim_names=None):
-        """Map names of dimensions in file to canonical axis names, based on
-        well-known dimension names for axes.
+    def var_range(self, var_name):
+        """Return minimum and maximum value taken by variable (over all
+        dimensions).
 
-        Canonical axis names are 'X' (longitude), 'Y' (latitude), 'Z' (level),
-        'S' (reduced XY grid), 'T' (time).
-
-        For information on reduced grids, see
-        http://www.unidata.ucar.edu/blogs/developer/entry/cf_reduced_grids.
-
-        Dimensions must be named with well-known names (e.g., 'latitude') to
-        be mapped. See dict ``dim_to_axis`` for dimension names recognized.
-        
-        :param dim_names: (list of str) List of names of dimensions of interest,
-            None for all dimensions in file
-        :return: (dict) Dictionary mapping canonical axis name back to
-            dimension name, for specified dimension names
+        :param var_name: (str) name of variable
+        :return (tuple) (min, max) minimum and maximum values
         """
-        if not dim_names:
-            dim_names = self.dim_names()
-        dim_to_axis = {
-            'lat': 'Y',
-            'latitude': 'Y',
-            'lon': 'X',
-            'longitude': 'X',
-            'xc': 'X',
-            'yc': 'Y',
-            'x': 'X',
-            'y': 'Y',
-            'time': 'T',
-            'timeofyear': 'T',
-            'plev': 'Z',
-            'lev': 'Z',
-            'level': 'Z',
-            'depth': 'Z',
+        # TODO: What about fill values?
+        variable = self.variables[var_name]
+        values = variable[:]
+        return np.nanmin(values), np.nanmax(values)
+
+    ###########################################################################
+    # Variables - time
+
+    @property
+    def time_var(self):
+        """The time variable (netCDF4.Variable) in this file"""
+        axes = self.axes_dim()
+        if 'T' in axes:
+            time_axis = axes['T']
+        else:
+            raise CFValueError("No axis is attributed with time information")
+        t = self.variables[time_axis]
+        assert hasattr(t, 'units') and hasattr(t, 'calendar')
+        return t
+
+    @cached_property
+    def time_var_values(self):
+        return self.time_var[:]
+
+    @cached_property
+    def time_steps(self):
+        """List of timesteps, i.e., values of the time dimension, in this file.
+        """
+        # This method appears to be very slow -- probably because of all the
+        # frequently unnecessary work it does computing the properties
+        # 'numeric' and 'datetime' it returns.
+        t = self.time_var
+        values = self.time_var_values
+        return {
+            'units': t.units,
+            'calendar': t.calendar,
+            'numeric': values,
+            'datetime': num2date(values, t.units, t.calendar)
         }
-        return {dim: dim_to_axis[dim]
-                for dim in dim_names if dim in dim_to_axis}
 
-    def dim_axes(self, dim_names=None):
-        """Return a dictionary mapping specified dimension names (or all
-        dimensions in file) to the canonical axis name for each dimension.
+    @cached_property
+    def time_step_size(self):
+        """Median of all intervals between successive timesteps in the file"""
+        scale = time_scale(self.time_var)
+        times = self.time_var_values
+        median_difference = np.median(np.diff(times))
+        return time_to_seconds(median_difference, scale)
 
-        Canonical axis names are 'X' (longitude), 'Y' (latitude), 'Z' (level),
-        'S' (reduced XY grid), 'T' (time).
+    @property
+    def time_resolution(self):
+        """A standard string that describes the time resolution of the file"""
+        if self.is_multi_year_mean:
+            return {
+                12: 'monthly',
+                4: 'seasonal',
+                1: 'yearly',
+                5: 'seasonal,yearly',
+                13: 'monthly,yearly',
+                17: 'monthly,seasonal,yearly',
+            }.get(self.time_var.size, 'other')
+        return resolution_standard_name(self.time_step_size)
 
-        For information on reduced grids, see
-        http://www.unidata.ucar.edu/blogs/developer/entry/cf_reduced_grids.
+    @cached_property
+    def time_range(self):
+        """Minimum and maximum timesteps in the file"""
+        t = self.time_var_values
+        return np.min(t), np.max(t)  # yup, this is actually necessary
 
-        :param dim_names: (str) List of names of dimensions of interest,
-            None for all dimensions in file
-        :return: (dict) Dictionary mapping dimension name to canonical axis
-            name, for specified dimension names
-        """
-        if not dim_names:
-            dim_names = self.dim_names()
-
-        if len(dim_names) == 0:
-            return {}
-
-        # Start with our best guess
-        dim_name_to_axis = self.dim_axes_from_names(dim_names)
-
-        # Then fill in the rest from the 'axis' attributes
-        for dim_name in dim_name_to_axis.keys():
-            if dim_name in self.dimensions and dim_name in self.variables \
-                    and hasattr(self.variables[dim_name], 'axis'):
-                dim_name_to_axis[dim_name] = self.variables[dim_name].axis
-
-                # A reduced grid dimension has the 'compress' attribute.
-                # This kind of dimension is labelled as a 'space' (S) dimension.
-                if hasattr(self.variables[dim_name], 'compress'):
-                    dim_name_to_axis[dim_name] = 'S'
-
-        return dim_name_to_axis
-
-    def axes_dim(self, dim_names=None):
-        """Return a dictionary mapping canonical axis names to specified
-        dimension names (or all dimensions in file).
-
-        ASSUMPTION: There is at most one dimension (name) per canonical axis
-        name. If not, the mapping inversion loses information.
-
-        Canonical axis names are 'X' (longitude), 'Y' (latitude), 'Z' (level),
-        'S' (reduced XY grid), 'T' (time).
-
-        For information on reduced grids, see
-        http://www.unidata.ucar.edu/blogs/developer/entry/cf_reduced_grids.
-
-        :param dim_names: (str) List of names of dimensions of interest,
-        None for all dimensions in file
-        :return: (dict) Dictionary mapping canonical axis name to dimension
-        name, for specified dimension names
-        """
-        # Invert {dim_name: axis} to {axis: dim_name}
-        return {axis: dim_name
-                for dim_name, axis in self.dim_axes(dim_names).items()}
-
-    def reduced_dims(self, var_name=None):
-        """Return a dict containing the names of the X and Y dimensions of
-        the named reduced spatial variable.
-         If the named variable is not attributed as a reduced variable,
-         return an empty dict.
-         If the number of reduced dimensions is not 2, raise an error.
-
-         Documentation on "compression by gathering", which this method deals
-         with:
-         http://cfconventions.org/cf-conventions/v1.6.0/cf-conventions.html#compression-by-gathering
-
-        :param var_name: (str) name of reduced spatial variable
-        :return:
-        """
-        axes_dim = self.axes_dim()
-        if 'S' not in axes_dim:
-            return {}
-        compressed_axis_names = self.variables[var_name].compress.split()
-        if len(compressed_axis_names) != 2:
-            raise CFValueError(
-                "Expected '{}:compress' to contain 2 variable names, found {}"
-                .format(var_name, compressed_axis_names))
-        # TODO: Verify that compressed axis names are always in the order Y, X
-        return {'X': compressed_axis_names[1], 'Y': compressed_axis_names[0]}
+    @property
+    def time_range_as_dates(self):
+        time_var = self.time_var
+        return num2date(self.time_range, time_var.units, time_var.calendar)
 
     @property
     def time_bounds_var_name(self):
-        """Return the name of the time bounds variable, 
+        """Return the name of the time bounds variable,
         None if no such variable exists.
-        
-        If `self.options['strict_metadata']` is True, use strict rules only for 
+
+        If `self.options['strict_metadata']` is True, use strict rules only for
         identifying the time bounds variable.
         Otherwise, use heuristics as well.
         """
@@ -650,147 +1070,6 @@ class CFDataset(Dataset):
             self.variables[self.climatology_bounds_var_name]
         return climatology_bounds_var[...]
 
-    @property
-    def is_multi_year_mean(self):
-        """Return True if the metadata indicates that the data consists of a
-        multi-year mean, determined by testing if  the file contains a
-        climatological time bounds variable.
-
-        See http://cfconventions.org/Data/cf-conventions/cf-conventions-1.6/build/
-        cf-conventions.html#climatological-statistics,
-        section 7.4
-
-        In non-strict mode, failing metadata that conforms to the above
-        standard, we use heuristics. These heuristics are emobodied here and in
-        `climatology_bounds_var_name` in non-strict mode.
-
-        If `self._cf_dataset_options['strict_metadata']` is True, use strict
-        rules only for determining if this file contains multi-year means.
-        Otherwise, use heuristics as well.
-        """
-        # If there is no time axis, this can't be a file of temporal means.
-        try:
-            time_var = self.time_var
-        except CFValueError:
-            return False
-
-        # Strict and non-strict rules, according to flag
-        if self.climatology_bounds_var_name:
-            # TODO: Output of `climatology_bounds_var_name` does not
-            # necessarily exist in the file. Should we check for existence?
-            return True
-
-        # Strict rules begin here
-        if self._cf_dataset_options['strict_metadata']:
-            return False
-
-        # Additional non-strict heuristics begin here
-        
-        # Heuristic: Time variable has "suspicious" length:
-        # 1, 4, 12, 5, 13, 16, 17 (yearly, seasonal, monthly, and
-        # various concatenations thereof) 
-        # AND time variable has likely values (mid-month, mid-season, mid-year)
-
-        def check_monthly(time_steps):
-            def check(t, month):
-                return t.month == month and t.day in {14, 15, 16}
-            return all(check(next(time_steps), month)
-                       for month in range(1, 13))
-
-        def check_seasonal(time_steps):
-            def check(t, month):
-                return t.month == month and t.day in {15, 16, 17}
-            return all(check(next(time_steps), month)
-                       for month in (1, 4, 7, 10))
-
-        def check_yearly(time_steps):
-            t = next(time_steps)
-            return ((t.month == 6 and t.day == 30) or
-                    (t.month == 7 and t.day in {1, 2}))
-
-        try:
-            check_intervals = {
-                1: (check_yearly,),
-                4: (check_seasonal,),
-                12: (check_monthly,),
-                5: (check_seasonal, check_yearly),
-                13: (check_monthly, check_yearly),
-                16: (check_monthly, check_seasonal),
-                17: (check_monthly, check_seasonal, check_yearly),
-            }[time_var.size]
-        except KeyError:
-            pass  # No suspcious lengths: Try next heuristic
-        else:
-            time_steps = (t for t in self.time_steps['datetime'])
-            if all(check(time_steps) for check in check_intervals):
-                return True
-
-        # Alas
-        return False
-
-    @property
-    def lat_var(self):
-        """The latitude variable (netCDF4.Variable) in this file"""
-        axes = self.axes_dim()
-        try:
-            return self.variables[axes['Y']]
-        except KeyError:
-            raise CFValueError(
-                'No axis is attributed with latitude information')
-
-    @property
-    def lon_var(self):
-        """The longitude variable (netCDF4.Variable) in this file"""
-        axes = self.axes_dim()
-        try:
-            return self.variables[axes['X']]
-        except KeyError:
-            raise CFValueError(
-                'No axis is attributed with longitude information')
-
-    @property
-    def time_var(self):
-        """The time variable (netCDF4.Variable) in this file"""
-        axes = self.axes_dim()
-        if 'T' in axes:
-            time_axis = axes['T']
-        else:
-            raise CFValueError("No axis is attributed with time information")
-        t = self.variables[time_axis]
-        assert hasattr(t, 'units') and hasattr(t, 'calendar')
-        return t
-
-    @cached_property
-    def time_var_values(self):
-        return self.time_var[:]
-
-    @cached_property
-    def time_steps(self):
-        """List of timesteps, i.e., values of the time dimension, in this file.
-        """
-        # This method appears to be very slow -- probably because of all the
-        # frequently unnecessary work it does computing the properties
-        # 'numeric' and 'datetime' it returns.
-        t = self.time_var
-        values = self.time_var_values
-        return {
-            'units': t.units,
-            'calendar': t.calendar,
-            'numeric': values,
-            'datetime': num2date(values, t.units, t.calendar)
-        }
-
-    @cached_property
-    def time_range(self):
-        """Minimum and maximum timesteps in the file"""
-        t = self.time_var_values
-        return np.min(t), np.max(t)  # yup, this is actually necessary
-
-    @property
-    def time_range_as_dates(self):
-        time_var = self.time_var
-        return num2date(self.time_range, time_var.units, time_var.calendar)
-
     def time_bounds_extrema(self, nominal=True, closed=True):
         """Extrema of the time bounds, or in the case of a file of multi-year
         means, the extrema of the climatological bounds. Values returned are in
@@ -893,294 +1172,31 @@ class CFDataset(Dataset):
         else:
             return self.time_range
 
-    @cached_property
-    def time_step_size(self):
-        """Median of all intervals between successive timesteps in the file"""
-        scale = time_scale(self.time_var)
-        times = self.time_var_values
-        median_difference = np.median(np.diff(times))
-        return time_to_seconds(median_difference, scale)
+    ###########################################################################
+    # Variables - spatial
 
     @property
-    def time_resolution(self):
-        """A standard string that describes the time resolution of the file"""
-        if self.is_multi_year_mean:
-            return {
-                12: 'monthly',
-                4: 'seasonal',
-                1: 'yearly',
-                5: 'seasonal,yearly',
-                13: 'monthly,yearly',
-                17: 'monthly,seasonal,yearly',
-            }.get(self.time_var.size, 'other')
-        return resolution_standard_name(self.time_step_size)
-
-    def var_bounds_and_values(self, var_name, bounds_var_name=None):
-        """Return a list of tuples describing the bounds and values of a
-        NetCDF variable, one tuple per variable value, defining
-        (lower_bound, value, upper_bound)
-
-        :param var_name: (str) name of NetCDF variable
-        :param bounds_var_name: name of bounds variable; if not specified,
-            use variable.bounds
-        :return: list of tuples of the form (lower_bound, value, upper_bound)
-        """
-        variable = self.variables[var_name]
-        values = variable[:]
-        bounds_var_name = bounds_var_name or getattr(variable, 'bounds', None)
-
-        if bounds_var_name:
-            # Explicitly defined bounds: use them
-            bounds_var = self.variables[bounds_var_name]
-            return zip(bounds_var[:, 0], values, bounds_var[:, 1])
-        else:
-            # No explicit bounds: manufacture them
-            midpoints = (
-                # fake lower "midpoint", half of previous step below first value
-                [(3*values[0] - values[1]) / 2] +
-                # midpoints of values
-                [(values[i] + values[i+1]) / 2 for i in range(len(values)-1)] +
-                # fake upper "midpoint", half of previous step above last value
-                [(3*values[-1] - values[-2]) / 2]
-            )
-            return zip(midpoints[:-1], values, midpoints[1:])
-
-    def var_range(self, var_name):
-        """Return minimum and maximum value taken by variable (over all
-        dimensions).
-
-        :param var_name: (str) name of variable
-        :return (tuple) (min, max) minimum and maximum values
-        """
-        # TODO: What about fill values?
-        variable = self.variables[var_name]
-        values = variable[:]
-        return np.nanmin(values), np.nanmax(values)
-
-    class UnifiedMetadata(object):
-        """Presents a unified interface to certain global metadata attributes
-        in a CFDataset object.
-
-        Why?
-        - A ``CFDataset`` can have metadata attributes named according to CMIP3
-          or CMIP5 standards, depending on the file's origin (which is indicated
-          by ``project_id``).
-        - We want a common interface, i.e., common names, for a selected set
-          of those differently named attributes.
-        - We must avoid shadowing existing properties and methods on a
-          ``CFDataset`` (or really, a ``netCDF4.Dataset``) object
-          unified names we'd like to use for these metadata properties.
-        - We'd like to present them as properties instead of as a dict,
-          which has uglier syntax.
-
-        How?
-        - Create a property called ``metadata`` on ``CFDataset`` that is an
-          instance of this class.
-        """
-
-        def __init__(self, dataset):
-            self.dataset = dataset
-
-        _aliases = {
-            # Original aliases - some mangle the terminology somewhat,
-            # at least by CMIP5 notions
-            'project': {
-                'CMIP3': 'project_id',
-                'CMIP5': 'project_id',
-            },
-            'institution': {
-                'CMIP3': 'institute',
-                'CMIP5': 'institute_id',
-            },
-            'model': {
-                'CMIP3': 'source',
-                'CMIP5': 'gcm.model_id',
-            },
-            'emissions': {
-                'CMIP3': 'experiment_id',
-                'CMIP5': 'gcm.experiment_id',
-            },
-            'run': {
-                'CMIP3': 'realization',
-                'CMIP5': 'ensemble_member',  # uses prefixed values
-            },
-            # Better aliases - adhere to CMIP5 terminology
-            'institute': {
-                'CMIP3': 'institute',
-                'CMIP5': 'institute_id',
-            },
-            'experiment': {
-                'CMIP3': 'experiment_id',
-                'CMIP5': 'gcm.experiment_id',
-            },
-            'ensemble_member': {
-                'CMIP3': 'realization',
-                'CMIP5': 'ensemble_member',  # uses prefixed values
-            },
-        }
-
-        def __getattr__(self, alias):
-            def missing_attribute(name):
-                return CFAttributeError(
-                    "Expected file to contain attribute '{}', "
-                    "but no such attribute exists".format(name)
-                )
-
-            try:
-                project_id = self.dataset.project_id
-            except AttributeError:
-                raise missing_attribute('project_id')
-
-            if project_id not in ['CMIP3', 'CMIP5']:
-                raise CFValueError(
-                    "Expected file to have project id of 'CMIP3' or 'CMIP5', "
-                    "found '{}'".format(project_id)
-                )
-
-            if alias not in self._aliases.keys():
-                raise CFAttributeError(
-                    "No such unified attribute: '{}'".format(alias))
-
-            def getdottedattr(obj, dotted_attr):
-                attrs = dotted_attr.split('.')
-                value = obj
-                for attr in attrs:
-                    value = getattr(value, attr)
-                return value
-
-            attr = self._aliases[alias][project_id]
-            try:
-                return getdottedattr(self.dataset, attr)
-            except:
-                raise missing_attribute(attr)
+    def lat_var(self):
+        """The latitude variable (netCDF4.Variable) in this file"""
+        axes = self.axes_dim()
+        try:
+            return self.variables[axes['Y']]
+        except KeyError:
+            raise CFValueError(
+                'No axis is attributed with latitude information')
 
     @property
-    def metadata(self):
-        """Prefix for all aliased (common-name) global metadata attributes"""
-        return self.UnifiedMetadata(self)
+    def lon_var(self):
+        """The longitude variable (netCDF4.Variable) in this file"""
+        axes = self.axes_dim()
+        try:
+            return self.variables[axes['X']]
+        except KeyError:
+            raise CFValueError(
+                'No axis is attributed with longitude information')
 
-    @property
-    def is_unprocessed_gcm_output(self):
-        """True iff the content of the file is unprocessed GCM output."""
-        return self.product == 'output'
-
-    @property
-    def is_downscaled_output(self):
-        """True iff the content of the file is downscaling output."""
-        return self.product == 'downscaled output'
-
-    @property
-    def is_hydromodel_output(self):
-        """True iff the content of the file is hydrological model output of
-        any kind."""
-        return self.product == 'hydrological model output'
-
-    @property
-    def is_hydromodel_dgcm_output(self):
-        """True iff the content of the file is output of a hydrological model
-        forced by downscaled GCM data."""
-        return self.is_hydromodel_output and \
-            self.forcing_type == 'downscaled gcm'
-
-    @property
-    def is_hydromodel_iobs_output(self):
-        """True iff the content of the file is output of a hydrological
-        model forced by interpolated observational data."""
-        return self.is_hydromodel_output and \
-            self.forcing_type == 'gridded observations'
-
-    @property
-    def model_type(self):
-        """String indicating what type of model the file contains.
-        Supports modelmeta/mm_cataloguer/index_netcdf.py.
-        Really rudimentary decision making about model type.
-        """
-        if self.metadata.project == 'NARCCAP' or \
-           self.metadata.project not in ('IPCC Fourth Assessment', 'CMIP5'):
-            return 'RCM'
-        else:
-            return 'GCM'
-
-    class AutoGcmPrefixedAttribute(object):
-        """Access attributes describing the original GCM input data used by
-        the program that generated this file.
-
-        In downstream processing of GCM files (e.g., downscaling), attributes
-        describing the input GCM (e.g., 'model_id') are recorded in the output
-        file with prefixes (e.g., 'driving_'). This class adds an automatically
-        computed prefix to a base property name before accessing it. Type of
-        file, and therefore prefix, is determined from the content of the file.
-
-        NOTE: This class will prefix any base attribute name, no matter
-        whether the prefixed name exists in the file.
-        """
-
-        def __init__(self, dataset):
-            self.__dict__['dataset'] = dataset
-
-        def _prefixed(self, attr):
-            if self.dataset.is_unprocessed_gcm_output:
-                prefix = ''
-            elif self.dataset.is_downscaled_output:
-                prefix = 'driving_'
-            elif self.dataset.is_hydromodel_dgcm_output:
-                prefix = 'forcing_driving_'
-            elif self.dataset.is_hydromodel_iobs_output:
-                raise CFAttributeError(
-                    'GCM attributes have no meaning for a hydrological model '
-                    'forced by observational data')
-            else:
-                raise CFAttributeError(
-                    'Cannot generate automatic GCM attribute prefixes for a '
-                    'file without a recognized type')
-
-            return prefix + attr
-
-        def __getattr__(self, attr):
-            prefixed_attr = self._prefixed(attr)
-            try:
-                return getattr(self.dataset, prefixed_attr)
-            except AttributeError:
-                raise CFAttributeError(
-                    "Expected file to contain attribute '{}' but no such "
-                    "attribute exists".format(self._prefixed(attr)))
-
-        def __setattr__(self, attr, value):
-            prefixed_attr = self._prefixed(attr)
-            return setattr(self.dataset, prefixed_attr, value)
-
-    @property
-    def gcm(self):
-        return self.AutoGcmPrefixedAttribute(self)
-
-    @property
-    def climo_periods(self):
-        """List of the standard climatological periods (see function
-        ``standard_climo_periods``) that are a subset of the date range in
-        the file."""
-        time_var = self.time_var
-        s_time, e_time = self.time_range
-        units = time_var.units
-        calendar = time_var.calendar
-        return {
-            k: (climo_start_date, climo_end_date)
-            for k, (climo_start_date, climo_end_date)
-            in standard_climo_periods(calendar).items()
-            if s_time < date2num(climo_start_date, units, calendar) and
-            date2num(climo_end_date, units, calendar) < e_time
-        }
-
-    @property
-    def ensemble_member(self):
-        """CMIP5 standard ensemble member code for this file"""
-        components = {}
-        for component, attr in [
-            ('r', 'realization'),
-            ('i', 'initialization_method'),
-            ('p', 'physics_version')
-        ]:
-            components[component] = getattr(self.gcm, attr)
-        return 'r{r}i{i}p{p}'.format(**components)
+    ###########################################################################
+    # Standard file identifiers
 
     def _cmor_type_filename_components(
             self,
@@ -1227,7 +1243,7 @@ class CFDataset(Dataset):
             # map the file's time resolution to a value.
             components.update(
                 mip_table=tres_to_mip_table and
-                    tres_to_mip_table.get(self.time_resolution, None)
+                          tres_to_mip_table.get(self.time_resolution, None)
             )
 
         if self.is_unprocessed_gcm_output:
@@ -1279,6 +1295,26 @@ class CFDataset(Dataset):
             unique_id += "_dim" + ''.join(sorted(dim_axes))
 
         return unique_id.replace('+', '-')  # In original code, but why?
+
+    ###########################################################################
+    # Climatology-specific methods
+
+    @property
+    def climo_periods(self):
+        """List of the standard climatological periods (see function
+        ``standard_climo_periods``) that are a subset of the date range in
+        the file."""
+        time_var = self.time_var
+        s_time, e_time = self.time_range
+        units = time_var.units
+        calendar = time_var.calendar
+        return {
+            k: (climo_start_date, climo_end_date)
+            for k, (climo_start_date, climo_end_date)
+            in standard_climo_periods(calendar).items()
+            if s_time < date2num(climo_start_date, units, calendar) and
+            date2num(climo_end_date, units, calendar) < e_time
+        }
 
     def climo_output_filename(self, t_start, t_end, variable=None):
         """Return an appropriate CMOR based filename for a climatology output
