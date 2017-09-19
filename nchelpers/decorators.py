@@ -3,7 +3,8 @@ from threading import local
 
 
 def prevent_infinite_recursion(func):
-    """Decorator that detects infinite recursion of a function and raises an exception if so.
+    """Decorator that detects infinite recursion of a function and raises an
+    exception if so.
     Adopted from http://stackoverflow.com/a/15955706.
     Thread-safe. Function arguments must be hashable.
     """
@@ -16,7 +17,9 @@ def prevent_infinite_recursion(func):
         if not hasattr(func._thread_locals, 'seen'):
             func._thread_locals.seen = set()
         if params in func._thread_locals.seen:
-            raise RuntimeError('Already called {} with the same arguments'.format(func.__name__))
+            raise RuntimeError(
+                'Already called {} with the same arguments'
+                .format(func.__name__))
 
         func._thread_locals.seen.add(params)
         try:

@@ -3,8 +3,19 @@ from pytest import mark
 from nchelpers import cmor_type_filename, standard_climo_periods
 
 
-keys = 'variable mip_table downscaling_method model experiment ensemble_member time_range geo_info'.split()
+keys = '''
+    variable
+    mip_table
+    downscaling_method
+    model
+    experiment
+    ensemble_member
+    time_range
+    geo_info
+'''.split()
 values = [str(v) for v in range(len(keys))]
+
+
 @mark.parametrize('component_values, expected', [
     (dict(zip(keys, values)), '_'.join(values)),
     ({'variable': 'var', 'ensemble_member': 'em'}, 'var_em'),
