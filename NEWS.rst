@@ -1,6 +1,15 @@
 News / Release Notes
 ====================
 
+4.0.0
+-----
+
+*Release Date: 19-Sep-2017*
+
+* Update the metadata-aware parts of ``nchelpers`` to meet the revised PCIC metadata standard.
+  This is a deemed breaking change because this library is no longer compatible with files that
+  do not meet the revised standard.
+
 3.0.0
 -----
 
