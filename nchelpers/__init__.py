@@ -1315,30 +1315,3 @@ class CFDataset(Dataset):
             if s_time < date2num(climo_start_date, units, calendar) and
             date2num(climo_end_date, units, calendar) < e_time
         }
-
-    def climo_output_filename(self, t_start, t_end, variable=None):
-        """Return an appropriate CMOR based filename for a climatology output
-        file based on this file as input.
-
-        :param t_start: (datetime.datetime) start date of output file
-        :param t_end: (datetime.datetime) end date of output file
-        :param variable: (str) name of variable to use in filename;
-            None for all dependent variable names concatenated
-        :return: (str) filename
-        """
-        return cmor_type_filename(
-            extension='.nc',
-            **self._cmor_type_filename_components(
-                variable=variable or '+'.join(
-                    sorted(self.dependent_varnames())),
-                # See section Generating Filenames in
-                # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data
-                frequency={
-                    'daily': 'msaClim',
-                    'monthly': 'saClim',
-                    'yearly': 'aClim'
-                }.get(self.time_resolution, None),
-                tres_to_mip_table=None,
-                time_range=_cmor_formatted_time_range(t_start, t_end)
-            )
-        )
