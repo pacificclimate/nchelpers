@@ -1,6 +1,13 @@
 News / Release Notes
 ====================
 
+5.0.0
+-----
+
+*Release Date: 20-Sep-2017*
+
+* Remove ``CFDataset.climo_output_filename``. A breaking change, although no one uses it.
+
 4.0.0
 -----
 
