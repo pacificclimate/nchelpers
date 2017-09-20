@@ -662,28 +662,6 @@ def test_climo_periods(tiny_dataset, expected):
     assert set(tiny_dataset.climo_periods.keys()) == expected
 
 
-@mark.parametrize('tiny_dataset, pattern, all_vars', [
-    ('gcm',
-     '{}_msaClim_BNU-ESM_historical_r1i1p1_20000101-20101231.nc',
-     'tasmax'),
-    ('downscaled',
-     '{}_msaClim_BCCAQ2_ACCESS1-0_historical+rcp45_r1i1p1_20000101-20101231.nc',
-     'tasmax'),
-    ('hydromodel_gcm',
-     '{}_msaClim_VICGL+RGM+HydroCon_ACCESS1-0_'
-     'historical+rcp45_r1i1p1_20000101-20101231.nc',
-     'BASEFLOW+EVAP+GLAC_AREA_BAND+GLAC_MBAL_BAND+RUNOFF+SWE_BAND'),
-    # Not relevant for climo data sets
-], indirect=['tiny_dataset'])
-@mark.parametrize('variable', [None, 'var'])
-def test_climo_output_filename(tiny_dataset, pattern, all_vars, variable):
-    assert tiny_dataset.climo_output_filename(
-        datetime(2000, 1, 1),
-        datetime(2010, 12, 31),
-        variable
-    ) == pattern.format(variable or all_vars)
-
-
 class TestIndirectValues:
     """Test the indirect value feature of CFDataset.
     See CFDataset class docstring for explanation of indirect values.
