@@ -1,6 +1,13 @@
 News / Release Notes
 ====================
 
+5.1.0
+-----
+
+*Release Date: 03-Oct-2017*
+
+* Update ``CFDataset`` to handle CLIMDEX files derived from downscaled GCM outputs.
+
 5.0.0
 -----
 
