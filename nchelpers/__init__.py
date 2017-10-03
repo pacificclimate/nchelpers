@@ -480,6 +480,8 @@ class CFDataset(Dataset):
                 raise CFAttributeError(
                     'GCM attributes have no meaning for a hydrological model '
                     'forced by observational data')
+            elif (self.dataset.is_climdex_ds_gcm_output):
+                prefix = 'downscaling__GCM__'
             else:
                 raise CFAttributeError(
                     'Cannot generate automatic GCM attribute prefixes for a '
@@ -632,15 +634,34 @@ class CFDataset(Dataset):
     def is_hydromodel_dgcm_output(self):
         """True iff the content of the file is output of a hydrological model
         forced by downscaled GCM data."""
-        return self.is_hydromodel_output and \
-               self.forcing_type == 'downscaled gcm'
+        return (self.is_hydromodel_output
+                and self.forcing_type == 'downscaled gcm')
 
     @property
     def is_hydromodel_iobs_output(self):
         """True iff the content of the file is output of a hydrological
         model forced by interpolated observational data."""
-        return self.is_hydromodel_output and \
-               self.forcing_type == 'gridded observations'
+        return (self.is_hydromodel_output
+                and self.forcing_type == 'gridded observations')
+
+    @property
+    def is_climdex_output(self):
+        """True iff the content of the file is output of climdex processing."""
+        return self.product == 'CLIMDEX output'
+
+    @property
+    def is_climdex_gcm_output(self):
+        """True iff the content of the file is output of climdex processing
+        on an unprocessed GCM output file."""
+        return (self.is_climdex_output
+                and self.input_product == 'output')
+
+    @property
+    def is_climdex_ds_gcm_output(self):
+        """True iff the content of the file is output of climdex processing
+        on a downscaled GCM output file."""
+        return (self.is_climdex_output
+                and self.input_product == 'downscaled output')
 
     ###########################################################################
     # Dimensions and axes
@@ -1269,6 +1290,13 @@ class CFDataset(Dataset):
             components.update(
                 hydromodel_method=_replace_commas(self.method_id),
                 obs_dataset_id=self.observations__dataset_id,
+                geo_info=getattr(self, 'domain', None)
+            )
+        elif self.is_climdex_output:
+            components.update(
+                downscaling_method=self.downscaling__method_id,
+                model=self.gcm.model_id,
+                experiment=_replace_commas(self.gcm.experiment_id),
                 geo_info=getattr(self, 'domain', None)
             )
 
