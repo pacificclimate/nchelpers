@@ -1,4 +1,5 @@
 python-dateutil
 netCDF4
+dask[array]
 cached-property
 pytest

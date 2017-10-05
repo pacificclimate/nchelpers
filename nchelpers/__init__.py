@@ -23,6 +23,8 @@ import numpy as np
 import six
 
 from netCDF4 import Dataset, num2date, date2num
+import dask.array as da
+
 from nchelpers.date_utils import \
     time_scale, resolution_standard_name, \
     time_to_seconds, seconds_to_time, \
@@ -927,8 +929,8 @@ class CFDataset(Dataset):
         """
         # TODO: What about fill values?
         variable = self.variables[var_name]
-        values = variable[:]
-        return np.nanmin(values), np.nanmax(values)
+        daskarray = da.from_array(variable, chunks=1000, lock=True)
+        return da.nanmin(daskarray), da.nanmax(daskarray)
 
     ###########################################################################
     # Variables - time
