@@ -982,10 +982,14 @@ class CFDataset(Dataset):
 
         # If time:bounds attribute exists, use it.
         try:
-            return time_var.bounds
+            var_name = time_var.bounds
+            if hasattr(self.variables, var_name):
+                return var_name
         except AttributeError:
-            if self._cf_dataset_options['strict_metadata']:
-                return None
+            pass
+
+        if self._cf_dataset_options['strict_metadata']:
+            return None
 
         # Non-strict heuristics begin here
 
@@ -1059,9 +1063,12 @@ class CFDataset(Dataset):
         if hasattr(time_var, 'bounds'):
             scale = time_scale(time_var)
             time_bounds_name = time_var.bounds
-            time_bounds = self.variables[time_bounds_name]
-            if multi_year_bounds(time_bounds, scale):
-                return time_bounds_name
+            try:
+                time_bounds = self.variables[time_bounds_name]
+                if multi_year_bounds(time_bounds, scale):
+                    return time_bounds_name
+            except KeyError:
+                pass  # claimed time bounds variable does not exist
 
         # Heuristic: Variable with name 'time_bounds' or 'time_bnds' exists
         # (but not identified by time:bounds) AND that time bounds variable

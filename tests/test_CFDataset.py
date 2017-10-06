@@ -312,6 +312,14 @@ climo_bounds_var_test_cases = (
         for strict in [False, True]
     ] +
 
+    # With time:bounds attr; without corresponding variable
+    [
+        (spec(tb_attr={'bounds': 'foo'}, tb_var_name=None,
+              tb_values=None, t_values=None),
+         strict, None, False)
+        for strict in [False, True]
+    ] +
+
     # With time:bounds attr; with time bounds too narrow (< 2 yr)
     [
         (spec(tb_attr={'bounds': 'foo'}, tb_var_name='foo',
