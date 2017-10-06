@@ -1,6 +1,13 @@
 News / Release Notes
 ====================
 
+5.1.1
+-----
+
+*Release Date: 06-Oct-2017*
+
+* Fix [non-existent time bounds bug](https://github.com/pacificclimate/nchelpers/issues/43).
+
 5.1.0
 -----
 
