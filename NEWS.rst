@@ -1,6 +1,13 @@
 News / Release Notes
 ====================
 
+5.1.2
+-----
+
+*Release Date: 30-Oct-2017*
+
+* Fix [360-day calendar bug](https://github.com/pacificclimate/nchelpers/issues/45).
+
 5.1.1
 -----
 
