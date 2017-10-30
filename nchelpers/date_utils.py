@@ -76,6 +76,29 @@ def seconds_to_time(s, units='seconds'):
             "No conversions available for unit '{}'".format(units))
 
 
+remapping_month_lengths = (31, 28, 31, 30, 30, 30, 30, 30, 30, 30, 30, 30)
+
+def cumsum(items):
+    total = 0
+    yield total
+    for item in items:
+        total += item
+        yield total
+
+
+remapping_month_ends = list(reversed(list(cumsum(remapping_month_lengths))))
+
+def jday_360_to_remapped_month_day(jday_360):
+    """Map a Julian day (day of year) in a 360-day calendar to a standard
+    calendar (month, day) pair -- no leap year (Feb always has 28 days).
+    This mapping is a bit peculiar in Jan, Feb, and Mar; outside of those dates
+    it's straightforward.
+    """
+    for index, end in enumerate(remapping_month_ends):
+        if jday_360 > end:
+            return 13 - index, jday_360 - end
+
+
 def to_datetime(value):
     """Convert (iterables of) datetime-like values to real datetime values.
 
@@ -96,10 +119,16 @@ def to_datetime(value):
     # See https://github.com/pacificclimate/modelmeta/blob/master/db/index_netcdf.r#L468-L479
     if isinstance(value, collections.Iterable):
         return (to_datetime(v) for v in value)
+
     if isinstance(value, (datetime, date)):
         return value
+
+    year, month, day = \
+        (getattr(value, attr) for attr in 'year month day'.split())
+    if getattr(value, 'calendar', None) == '360_day':
+        month, day = jday_360_to_remapped_month_day(value.dayofyr)
     return datetime(
-        *(getattr(value, attr) for attr in 'year month day'.split()),
+        year, month, day,
         **{attr: getattr(value, attr) 
            for attr in 'hour minute second microsecond'.split()}
     )
