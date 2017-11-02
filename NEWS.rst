@@ -1,6 +1,13 @@
 News / Release Notes
 ====================
 
+5.1.3
+-----
+
+*Release Date: 02-Nov-2017*
+
+* No change. Using to test local PyPI server upload.
+
 5.1.2
 -----
 
