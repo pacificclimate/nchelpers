@@ -625,14 +625,25 @@ class CFDataset(Dataset):
         return False
 
     @property
+    def is_gcm_derivative(self):
+        """True iff the content of the file is GCM output or a derivative
+        thereof"""
+        return self.metadata.project in ('CMIP3', 'CMIP5')
+
+    @property
+    def is_other(self):
+        """True iff the content of the file is an 'other' type."""
+        return self.metadata.project == 'other'
+
+    @property
     def is_unprocessed_gcm_output(self):
         """True iff the content of the file is unprocessed GCM output."""
-        return self.product == 'output'
+        return self.is_gcm_derivative and self.product == 'output'
 
     @property
     def is_downscaled_output(self):
         """True iff the content of the file is downscaling output."""
-        return self.product == 'downscaled output'
+        return self.is_gcm_derivative and self.product == 'downscaled output'
 
     @property
     def is_hydromodel_output(self):
@@ -644,7 +655,8 @@ class CFDataset(Dataset):
     def is_hydromodel_dgcm_output(self):
         """True iff the content of the file is output of a hydrological model
         forced by downscaled GCM data."""
-        return (self.is_hydromodel_output
+        return (self.is_gcm_derivative
+                and self.is_hydromodel_output
                 and self.forcing_type == 'downscaled gcm')
 
     @property
@@ -663,15 +675,22 @@ class CFDataset(Dataset):
     def is_climdex_gcm_output(self):
         """True iff the content of the file is output of climdex processing
         on an unprocessed GCM output file."""
-        return (self.is_climdex_output
+        return (self.is_gcm_derivative
+                and self.is_climdex_output
                 and self.input_product == 'output')
 
     @property
     def is_climdex_ds_gcm_output(self):
         """True iff the content of the file is output of climdex processing
         on a downscaled GCM output file."""
-        return (self.is_climdex_output
+        return (self.is_gcm_derivative
+                and self.is_climdex_output
                 and self.input_product == 'downscaled output')
+
+    @property
+    def is_gridded_obs(self):
+        """True iff the content of the file is gridded observations"""
+        return self.is_other and self.product == 'gridded observations'
 
     ###########################################################################
     # Dimensions and axes
@@ -1256,7 +1275,6 @@ class CFDataset(Dataset):
         # File content-independent components
         components = {
             'variable': '+'.join(sorted(self.dependent_varnames())),
-            'ensemble_member': self.ensemble_member,
             'time_range': _cmor_formatted_time_range(
                 *to_datetime(
                     num2date(
@@ -1267,53 +1285,69 @@ class CFDataset(Dataset):
             )
         }
 
-        # Components depending on the type of file
-        if self.is_multi_year_mean:
-            components.update(
-                frequency=self.frequency
-            )
-        else:
-            # Regarding how the 'mip_table' component is defined here,
-            # see the discussion in section titled "MIP table / table_id" in
-            # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data
-            # Specifically, we do not consult the value of the attribute
-            # ``table_id`` because it is too limited for our needs. Instead we
-            # map the file's time resolution to a value.
+        if self.is_gcm_derivative:
+
+            components.update(ensemble_member=self.ensemble_member)
+
+            # Components depending on the type of file
+            if self.is_multi_year_mean:
+                components.update(
+                    frequency=self.frequency
+                )
+            else:
+                # Regarding how the 'mip_table' component is defined here,
+                # see the discussion in section titled "MIP table / table_id" in
+                # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data
+                # Specifically, we do not consult the value of the attribute
+                # ``table_id`` because it is too limited for our needs. Instead we
+                # map the file's time resolution to a value.
+                components.update(
+                    mip_table=tres_to_mip_table and
+                              tres_to_mip_table.get(self.time_resolution, None)
+                )
+
+            if self.is_unprocessed_gcm_output:
+                components.update(
+                    model=self.metadata.model,
+                    experiment=self.metadata.emissions,
+                )
+            elif self.is_downscaled_output:
+                components.update(
+                    downscaling_method=self.method_id,
+                    model=self.gcm.model_id,
+                    experiment=_replace_commas(self.gcm.experiment_id),
+                    geo_info=getattr(self, 'domain', None)
+                )
+            elif self.is_hydromodel_dgcm_output:
+                components.update(
+                    hydromodel_method=_replace_commas(self.method_id),
+                    model=self.gcm.model_id,
+                    experiment=_replace_commas(self.gcm.experiment_id),
+                    geo_info=getattr(self, 'domain', None)
+                )
+            elif self.is_hydromodel_iobs_output:
+                components.update(
+                    hydromodel_method=_replace_commas(self.method_id),
+                    obs_dataset_id=self.observations__dataset_id,
+                    geo_info=getattr(self, 'domain', None)
+                )
+            elif self.is_climdex_output:
+                components.update(
+                    downscaling_method=self.downscaling__method_id,
+                    model=self.gcm.model_id,
+                    experiment=_replace_commas(self.gcm.experiment_id),
+                    geo_info=getattr(self, 'domain', None)
+                )
+
+        elif self.is_other:
+
+            # CAUTION: Temporary solution to a bigger problem here
+
             components.update(
                 mip_table=tres_to_mip_table and
-                          tres_to_mip_table.get(self.time_resolution, None)
-            )
-
-        if self.is_unprocessed_gcm_output:
-            components.update(
+                          tres_to_mip_table.get(self.time_resolution, None),
                 model=self.metadata.model,
-                experiment=self.metadata.emissions,
-            )
-        elif self.is_downscaled_output:
-            components.update(
-                downscaling_method=self.method_id,
-                model=self.gcm.model_id,
-                experiment=_replace_commas(self.gcm.experiment_id),
-                geo_info=getattr(self, 'domain', None)
-            )
-        elif self.is_hydromodel_dgcm_output:
-            components.update(
-                hydromodel_method=_replace_commas(self.method_id),
-                model=self.gcm.model_id,
-                experiment=_replace_commas(self.gcm.experiment_id),
-                geo_info=getattr(self, 'domain', None)
-            )
-        elif self.is_hydromodel_iobs_output:
-            components.update(
-                hydromodel_method=_replace_commas(self.method_id),
-                obs_dataset_id=self.observations__dataset_id,
-                geo_info=getattr(self, 'domain', None)
-            )
-        elif self.is_climdex_output:
-            components.update(
-                downscaling_method=self.downscaling__method_id,
-                model=self.gcm.model_id,
-                experiment=_replace_commas(self.gcm.experiment_id),
+                experiment=self.metadata.experiment,
                 geo_info=getattr(self, 'domain', None)
             )
 
