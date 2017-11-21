@@ -353,7 +353,8 @@ class CFDataset(Dataset):
 
         Why?
         - A ``CFDataset`` can have metadata attributes named according to CMIP3
-          or CMIP5 standards, depending on the file's origin (which is indicated
+          or CMIP5 standards, or non-CMIP standards, presently grouped under the
+          label 'other', depending on the file's origin (which is indicated
           by ``project_id``).
         - We want a common interface, i.e., common names, for a selected set
           of those differently named attributes.
@@ -371,41 +372,46 @@ class CFDataset(Dataset):
         def __init__(self, dataset):
             self.dataset = dataset
 
-        _aliases = {
-            # Original aliases - some mangle the terminology somewhat,
-            # at least by CMIP5 notions
-            'project': {
-                'CMIP3': 'project_id',
-                'CMIP5': 'project_id',
+        _aliases_by_project_id = {
+            'CMIP3': {
+                # Original aliases - some mangle the terminology somewhat,
+                'project': 'project_id',
+                'institution': 'institute',
+                'model': 'source',
+                'emissions': 'experiment_id',
+                'run': 'realization',
+                # Better aliases - adhere to CMIP5 terminology
+                'institute': 'institute',
+                'experiment': 'experiment_id',
+                'ensemble_member': 'realization',
             },
-            'institution': {
-                'CMIP3': 'institute',
-                'CMIP5': 'institute_id',
+
+            'CMIP5': {
+                # Original aliases - some mangle the terminology somewhat,
+                'project': 'project_id',
+                'institution': 'institute_id',
+                'model': 'gcm.model_id',
+                'emissions': 'gcm.experiment_id',
+                'run': 'ensemble_member',  # uses prefixed values
+                # Better aliases - adhere to CMIP5 terminology
+                'institute': 'institute_id',
+                'experiment': 'gcm.experiment_id',
+                'ensemble_member': 'ensemble_member',  # uses prefixed values
             },
-            'model': {
-                'CMIP3': 'source',
-                'CMIP5': 'gcm.model_id',
-            },
-            'emissions': {
-                'CMIP3': 'experiment_id',
-                'CMIP5': 'gcm.experiment_id',
-            },
-            'run': {
-                'CMIP3': 'realization',
-                'CMIP5': 'ensemble_member',  # uses prefixed values
-            },
-            # Better aliases - adhere to CMIP5 terminology
-            'institute': {
-                'CMIP3': 'institute',
-                'CMIP5': 'institute_id',
-            },
-            'experiment': {
-                'CMIP3': 'experiment_id',
-                'CMIP5': 'gcm.experiment_id',
-            },
-            'ensemble_member': {
-                'CMIP3': 'realization',
-                'CMIP5': 'ensemble_member',  # uses prefixed values
+
+            # CAUTION: This mapping uses attribute names (for both metadata.*
+            # and mapped attributes) that apply to CMIP datasets. 'other' type
+            # datasets are not necessarily so. This is a minimal temporary
+            # solution for a priority project.
+            'other': {
+                # Original aliases - some mangle the terminology somewhat,
+                'project': 'project_id',
+                'institution': 'institute_id',
+                'model': 'model_id',
+                'emissions': 'experiment_id',
+                # Better aliases - adhere to CMIP5 terminology
+                'institute': 'institute_id',
+                'experiment': 'experiment_id',
             },
         }
 
@@ -421,15 +427,19 @@ class CFDataset(Dataset):
             except AttributeError:
                 raise missing_attribute('project_id')
 
-            if project_id not in ['CMIP3', 'CMIP5']:
+            if project_id not in self._aliases_by_project_id.keys():
                 raise CFValueError(
-                    "Expected file to have project id of 'CMIP3' or 'CMIP5', "
-                    "found '{}'".format(project_id)
+                    "Expected file to have project id in {}, found '{}'"
+                    .format(self._aliases_by_project_id.keys(), project_id)
                 )
 
-            if alias not in self._aliases.keys():
+            aliases = self._aliases_by_project_id[project_id]
+
+            if alias not in aliases.keys():
                 raise CFAttributeError(
-                    "No such unified attribute: '{}'".format(alias))
+                    "No such unified attribute: '{}' for a project_id of '{}"
+                    .format(alias, project_id)
+                )
 
             def getdottedattr(obj, dotted_attr):
                 attrs = dotted_attr.split('.')
@@ -438,7 +448,7 @@ class CFDataset(Dataset):
                     value = getattr(value, attr)
                 return value
 
-            attr = self._aliases[alias][project_id]
+            attr = aliases[alias]
             try:
                 return getdottedattr(self.dataset, attr)
             except:
