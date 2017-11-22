@@ -409,6 +409,7 @@ class CFDataset(Dataset):
                 'institution': 'institute_id',
                 'model': 'model_id',
                 'emissions': 'experiment_id',
+                'run': 'run',  # bogus attribute to replace ensemble_member
                 # Better aliases - adhere to CMIP5 terminology
                 'institute': 'institute_id',
                 'experiment': 'experiment_id',

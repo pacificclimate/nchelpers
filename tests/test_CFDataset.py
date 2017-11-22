@@ -220,8 +220,8 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('climdex_ds_gcm', 'unique_id',
      'altcddETCCDI_yr_BCCAQ_ACCESS1-0_historical-rcp85_r1i1p1_19500702-21000702'),
 
-    ('gridded_obs', 'first_MiB_md5sum', '3e675025e0150e3e8b802dd8dece718f'),
-    ('gridded_obs', 'md5', '3e675025e0150e3e8b802dd8dece718f'),
+    ('gridded_obs', 'first_MiB_md5sum', '6e4b0f8968a18ffa917e34b68a3e5636'),
+    ('gridded_obs', 'md5', '6e4b0f8968a18ffa917e34b68a3e5636'),
     ('gridded_obs', 'climatology_bounds_var_name', None),
     ('gridded_obs', 'is_multi_year_mean', False),
     ('gridded_obs', 'time_range', (0.0, 3.0)),
@@ -564,6 +564,7 @@ def test_gcm_simple_property(tiny_dataset, prop, expected):
     ('gridded_obs', 'institution', 'PCIC'),
     ('gridded_obs', 'model', 'SYMAP_BC_v1'),
     ('gridded_obs', 'emissions', 'historical'),
+    ('gridded_obs', 'run', 'nominal'),
     ('gridded_obs', 'institute', 'PCIC'),
     ('gridded_obs', 'experiment', 'historical'),
 ], indirect=['tiny_dataset'])
