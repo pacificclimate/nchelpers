@@ -220,6 +220,23 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('climdex_ds_gcm', 'unique_id',
      'altcddETCCDI_yr_BCCAQ_ACCESS1-0_historical-rcp85_r1i1p1_19500702-21000702'),
 
+    ('gridded_obs', 'first_MiB_md5sum', '6e4b0f8968a18ffa917e34b68a3e5636'),
+    ('gridded_obs', 'md5', '6e4b0f8968a18ffa917e34b68a3e5636'),
+    ('gridded_obs', 'climatology_bounds_var_name', None),
+    ('gridded_obs', 'is_multi_year_mean', False),
+    ('gridded_obs', 'time_range', (0.0, 3.0)),
+    ('gridded_obs', 'time_step_size', time_to_seconds(1, 'days')),
+    ('gridded_obs', 'time_resolution', 'daily'),
+    ('gridded_obs', 'is_unprocessed_gcm_output', False),
+    ('gridded_obs', 'is_downscaled_output', False),
+    ('gridded_obs', 'is_hydromodel_output', False),
+    ('gridded_obs', 'is_hydromodel_dgcm_output', False),
+    # ('gridded_obs', 'is_hydromodel_iobs_output', False), # TODO
+    ('gridded_obs', 'cmor_filename',
+     'pr_day_SYMAP_BC_v1_historical_19500101-19500104.nc'),
+    ('gridded_obs', 'unique_id',
+     'pr_day_SYMAP_BC_v1_historical_19500101-19500104'),
+
 ], indirect=['tiny_dataset'])
 def test_simple_property(tiny_dataset, prop, expected):
     assert getattr(tiny_dataset, prop) == expected
@@ -542,6 +559,14 @@ def test_gcm_simple_property(tiny_dataset, prop, expected):
     ('climdex_ds_gcm', 'experiment', 'historical, rcp85'),
     ('climdex_ds_gcm', 'run', 'r1i1p1'),
     ('climdex_ds_gcm', 'ensemble_member', 'r1i1p1'),
+
+    ('gridded_obs', 'project', 'other'),
+    ('gridded_obs', 'institution', 'PCIC'),
+    ('gridded_obs', 'model', 'SYMAP_BC_v1'),
+    ('gridded_obs', 'emissions', 'historical'),
+    ('gridded_obs', 'run', 'nominal'),
+    ('gridded_obs', 'institute', 'PCIC'),
+    ('gridded_obs', 'experiment', 'historical'),
 ], indirect=['tiny_dataset'])
 def test_metadata_simple_property(tiny_dataset, prop, expected):
     assert getattr(tiny_dataset.metadata, prop) == expected
@@ -587,6 +612,7 @@ def test_dim_names(tiny_dataset, expected):
     'hydromodel_gcm',
     'mClim_gcm',
     'climdex_ds_gcm',
+    'gridded_obs',
 ], indirect=True)
 @mark.parametrize('dim_name, expected', [
     (['time'], {'time': 'T'}),
@@ -603,6 +629,7 @@ def test_dim_axes_from_names(tiny_dataset, dim_name, expected):
     ('hydromodel_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y', 'depth': 'Z'}),
     ('mClim_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
     ('climdex_ds_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
+    ('gridded_obs', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
 ], indirect=['tiny_dataset'])
 def test_dim_axes_from_names2(tiny_dataset, expected):
     assert tiny_dataset.dim_axes_from_names() == expected
@@ -615,6 +642,7 @@ def test_dim_axes_from_names2(tiny_dataset, expected):
     'hydromodel_gcm',
     'mClim_gcm',
     'climdex_ds_gcm',
+    'gridded_obs',
 ], indirect=True)
 @mark.parametrize('dim_name, expected', (
         (['time'], {'time': 'T'}),
@@ -631,6 +659,7 @@ def test_dim_axes(tiny_dataset, dim_name, expected):
     ('hydromodel_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y', 'depth': 'Z'}),
     ('mClim_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
     ('climdex_ds_gcm', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
+    ('gridded_obs', {'time': 'T', 'lon': 'X', 'lat': 'Y'}),
 ], indirect=['tiny_dataset'])
 def test_dim_axes2(tiny_dataset, expected):
     assert tiny_dataset.dim_axes() == expected
@@ -643,6 +672,7 @@ def test_dim_axes2(tiny_dataset, expected):
     ('hydromodel_gcm', {'T': 'time', 'X': 'lon', 'Y': 'lat', 'Z': 'depth'}),
     ('mClim_gcm', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),
     ('climdex_ds_gcm', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),
+    ('gridded_obs', {'T': 'time', 'X': 'lon', 'Y': 'lat'}),
 ], indirect=['tiny_dataset'])
 def test_axes_dim(tiny_dataset, expected):
     assert tiny_dataset.axes_dim() == expected
@@ -662,6 +692,7 @@ def test_axes_dim(tiny_dataset, expected):
                                'GLAC_AREA_BAND', 'SWE_BAND'}),
     ('mClim_gcm', set(), {'tasmax'}),
     ('climdex_ds_gcm', set(), {'altcddETCCDI'}),
+    ('gridded_obs', set(), {'pr'}),
 ], indirect=['tiny_dataset'])
 def test_dependent_varnames(tiny_dataset, dim_names, expected):
     assert set(tiny_dataset.dependent_varnames(dim_names=dim_names)) == expected
@@ -673,6 +704,7 @@ def test_dependent_varnames(tiny_dataset, dim_names, expected):
     'hydromodel_gcm',
     'mClim_gcm',
     'climdex_ds_gcm',
+    'gridded_obs',
 ], indirect=True)
 @mark.parametrize('property, standard_name', [
     ('time_var', 'time'),
@@ -691,6 +723,7 @@ def test_common_vars(tiny_dataset, property, standard_name):
     ('sClim_gcm', 6584.0, 6859.0),
     ('aClim_gcm', 6752.0, 6752.0),
     ('climdex_ds_gcm', 182.0, 54969.0),
+    ('gridded_obs', 0.0, 3.0),
 ], indirect=['tiny_dataset'])
 def test_time_var_values(tiny_dataset, start_time, end_time):
     assert tiny_dataset.time_var_values[0] == start_time
@@ -705,6 +738,7 @@ def test_time_var_values(tiny_dataset, start_time, end_time):
     ('sClim_gcm', 6584.0, 6859.0),
     ('aClim_gcm', 6752.0, 6752.0),
     ('climdex_ds_gcm', 182.0, 54969.0),
+    ('gridded_obs', 0.0, 3.0),
 ], indirect=['tiny_dataset'])
 def test_time_steps(tiny_dataset, start_time, end_time):
     time = tiny_dataset.variables['time']
