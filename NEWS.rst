@@ -1,6 +1,15 @@
 News / Release Notes
 ====================
 
+5.2.0
+-----
+
+*Release Date: 23-Nov-2017*
+
+* Add workaround to support indexing non-CMIP*/climate model based outputs.
+  Adds 'other' project_id and new mappings for unified metadata attributes.
+
+
 5.1.3
 -----
 
