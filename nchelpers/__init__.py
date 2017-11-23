@@ -399,10 +399,15 @@ class CFDataset(Dataset):
                 'ensemble_member': 'ensemble_member',  # uses prefixed values
             },
 
-            # CAUTION: This mapping uses attribute names (for both metadata.*
-            # and mapped attributes) that apply to CMIP datasets. 'other' type
-            # datasets are not necessarily so. This is a minimal temporary
-            # solution for a priority project.
+            # CAUTION: This is a minimal temporary solution for a priority
+            # project. This mapping uses attribute names (for both metadata.*
+            # and mapped attributes) that apply to CMIP*/climate model derived
+            # datasets. 'other' type datasets are not necessarily so.
+            # For a full solution, see
+            # https://github.com/pacificclimate/modelmeta/issues/52
+            # Note also that this mapping does not use any prefixed values,
+            # which (at present) are specific to CMIP/climate model derived
+            # datasets.
             'other': {
                 # Original aliases - some mangle the terminology somewhat,
                 'project': 'project_id',
