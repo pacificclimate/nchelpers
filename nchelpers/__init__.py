@@ -929,7 +929,7 @@ class CFDataset(Dataset):
         variable = self.variables[var_name]
         range_min = float('inf')
         range_max = float('-inf')
-        for chunk in np.nditer(variable, flags=['external_loop']):
+        for chunk in np.nditer(variable, flags=['external_loop'], order='F'):
             range_min = min(range_min, np.nanmin(chunk))
             range_max = max(range_max, np.nanmax(chunk))
         return range_min, range_max
