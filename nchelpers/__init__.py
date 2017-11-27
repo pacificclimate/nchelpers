@@ -927,8 +927,12 @@ class CFDataset(Dataset):
         """
         # TODO: What about fill values?
         variable = self.variables[var_name]
-        values = variable[:]
-        return np.nanmin(values), np.nanmax(values)
+        range_min = float('inf')
+        range_max = float('-inf')
+        for chunk in np.nditer(variable, flags=['external_loop']):
+            range_min = min(range_min, np.nanmin(chunk))
+            range_max = max(range_max, np.nanmax(chunk))
+        return range_min, range_max
 
     ###########################################################################
     # Variables - time
