@@ -918,7 +918,7 @@ class CFDataset(Dataset):
             )
             return zip(midpoints[:-1], values, midpoints[1:])
 
-    def var_range(self, var_name):
+    def var_range(self, var_name, chunksize=1000):
         """Return minimum and maximum value taken by variable (over all
         dimensions).
 
@@ -927,11 +927,16 @@ class CFDataset(Dataset):
         """
         # TODO: What about fill values?
         variable = self.variables[var_name]
-        range_min = float('inf')
-        range_max = float('-inf')
-        for chunk in np.nditer(variable, flags=['external_loop'], order='F'):
-            range_min = min(range_min, np.nanmin(chunk))
-            range_max = max(range_max, np.nanmax(chunk))
+        if variable.ndim == 3:
+            range_min = float('inf')
+            range_max = float('-inf')
+            for t in range(variable.shape[0]):
+                chunk = variable[t,:,:]
+                range_min = min(range_min, np.nanmin(chunk))
+                range_max = max(range_max, np.nanmax(chunk))
+        else:
+            range_min = np.nanmin(variable)
+            range_max = np.nanmax(variable)
         return range_min, range_max
 
     ###########################################################################
