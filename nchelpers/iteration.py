@@ -18,14 +18,16 @@ the array).
 A corner is the index within a chunk that has the smallest values in
 each coordinate component.
 """
+from itertools import product
+
 
 def chunk_corners(shape, chunk_shape, d=0):
     """
     Generator that enumerates the index of the corner of each chunk of
     a specified chunk shape within a specified array shape.
 
-    Currently, there is only one ordering available: the first index varies
-    fastest, also known as C ordering.
+    Currently, there is only one ordering available: the last index varies
+    fastest
 
     :param shape: (tuple) shape of array
     :param chunk_shape: (tuple) shape of (full-size) chunk
@@ -34,13 +36,14 @@ def chunk_corners(shape, chunk_shape, d=0):
     :return (generator) that yields indices of chunk corners.
     """
     assert len(shape) == len(chunk_shape)
-    if d >= len(shape):
-        yield ()
-    else:
-        axis = range(0, shape[d], chunk_shape[d])
-        for index in axis:
-            for indices in chunk_corners(shape, chunk_shape, d+1):
-                yield (index,) + indices
+    return product(*(range(0, s, c) for s, c in zip(shape, chunk_shape)))
+    # if d >= len(shape):
+    #     yield ()
+    # else:
+    #     axis = range(0, shape[d], chunk_shape[d])
+    #     for index in axis:
+    #         for indices in chunk_corners(shape, chunk_shape, d+1):
+    #             yield (index,) + indices
 
 
 def chunk_slices(shape, chunk_shape):
