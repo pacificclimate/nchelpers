@@ -591,7 +591,7 @@ def test_get_var_bounds_and_values(tiny_dataset, var_name):
     ('gcm', 'tasmax', (220.68445, 304.13501)),
 ], indirect=['tiny_dataset'])
 def test_variable_range(tiny_dataset, var_name, expected):
-    assert tiny_dataset.var_range(var_name) == approx(expected)
+    assert tiny_dataset.var_range(var_name, chunksize=2) == approx(expected)
 
 
 @mark.parametrize('tiny_dataset, expected', [

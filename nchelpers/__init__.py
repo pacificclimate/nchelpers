@@ -29,6 +29,7 @@ from nchelpers.date_utils import \
     d2ss, to_datetime
 from nchelpers.decorators import prevent_infinite_recursion
 from nchelpers.exceptions import CFAttributeError, CFValueError
+from nchelpers.iteration import opt_chunk_shape, chunks
 
 # Map of nchelpers time resolution strings to MIP table names, standard where
 # possible. For an explanation of the content of this map, see the discussion
@@ -918,7 +919,7 @@ class CFDataset(Dataset):
             )
             return zip(midpoints[:-1], values, midpoints[1:])
 
-    def var_range(self, var_name, chunksize=1000):
+    def var_range(self, var_name, chunksize=1000000):
         """Return minimum and maximum value taken by variable (over all
         dimensions).
 
@@ -927,16 +928,12 @@ class CFDataset(Dataset):
         """
         # TODO: What about fill values?
         variable = self.variables[var_name]
-        if variable.ndim == 3:
-            range_min = float('inf')
-            range_max = float('-inf')
-            for t in range(variable.shape[0]):
-                chunk = variable[t,:,:]
-                range_min = min(range_min, np.nanmin(chunk))
-                range_max = max(range_max, np.nanmax(chunk))
-        else:
-            range_min = np.nanmin(variable)
-            range_max = np.nanmax(variable)
+        range_min = float('inf')
+        range_max = float('-inf')
+        chunk_shape = opt_chunk_shape(variable.shape, chunksize)
+        for chunk in chunks(variable, chunk_shape):
+            range_min = min(range_min, np.nanmin(chunk))
+            range_max = max(range_max, np.nanmax(chunk))
         return range_min, range_max
 
     ###########################################################################
