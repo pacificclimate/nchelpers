@@ -4,7 +4,8 @@ from functools import reduce
 from itertools import product
 
 import pytest
-from nchelpers.iteration import chunk_corners, chunk_slices, chunks
+from nchelpers.iteration import chunk_corners, chunk_slices, chunks, \
+    opt_chunk_shape
 
 import numpy as np
 
@@ -86,3 +87,31 @@ def test_print_chunks(array, chunk_shape):
         print(chunk)
 
 
+@pytest.mark.parametrize('shape, max_chunk_size', [
+    ((200, 10, 5), 1),
+    ((200, 10, 5), 2),
+    ((200, 10, 5), 3),
+    ((200, 10, 5), 5),
+    ((200, 10, 5), 6),
+    ((200, 10, 5), 7),
+    ((200, 10, 5), 9),
+    ((200, 10, 5), 10),
+    ((200, 10, 5), 11),
+    ((200, 10, 5), 20),
+    ((200, 10, 5), 100),
+    ((200, 10, 5), 101),
+    ((200, 10, 5), 150),
+    ((200, 10, 5), 1000),
+    ((200, 10, 5), 1100),
+    ((200, 10, 5), 1251),
+    ((200, 10, 5), 200*10*5),
+    ((200, 10, 5), 200*10*5 + 1),
+    ((200, 10, 5), 200*10*5 * 100),
+])
+def test_opt_chunk_shape(shape, max_chunk_size):
+    ocs = opt_chunk_shape(shape, max_chunk_size)
+    print("{}; {} -> {}; {}".format(shape, max_chunk_size, ocs, size(ocs)))
+    assert len(ocs) == len(shape)
+    assert size(ocs) <= max_chunk_size
+    assert size(ocs) <= size(shape)
+    assert all(c <= s for c, s in zip(ocs, shape))

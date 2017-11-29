@@ -19,6 +19,7 @@ A corner is the index within a chunk that has the smallest values in
 each coordinate component.
 """
 from itertools import product
+from math import floor
 
 
 def chunk_corners(shape, chunk_shape, d=0):
@@ -37,6 +38,7 @@ def chunk_corners(shape, chunk_shape, d=0):
     """
     assert len(shape) == len(chunk_shape)
     return product(*(range(0, s, c) for s, c in zip(shape, chunk_shape)))
+    # Might be useful if we need to do first index varying fastest
     # if d >= len(shape):
     #     yield ()
     # else:
@@ -76,3 +78,25 @@ def chunks(array, chunk_shape):
     """
     for chunk_slice in chunk_slices(array.shape, chunk_shape):
         yield array[chunk_slice]
+
+
+def opt_chunk_shape(shape, max_chunk_size):
+    """
+    Return an "optimal" chunk shape of size at most ``max_chunk_size`` for
+    an array of shape ``shape``.
+
+    :param shape: (tuple) array shape
+    :param max_chunk_size: (int) maximum size (element count) of chunk
+    :return: (tuple) chunk shape
+    """
+    n = len(shape)
+    cs = [1] * n
+    size = 1
+    d = n - 1
+    while d >= 0 and size * shape[d] <= max_chunk_size:
+        cs[d] = shape[d]
+        size *= shape[d]
+        d -= 1
+    if d >= 0:
+        cs[d] = floor(max_chunk_size / size)
+    return tuple(cs)
