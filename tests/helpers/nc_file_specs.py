@@ -19,7 +19,7 @@ def create_fake_nc_dataset(filepath, spec):
     The specification object has the general form::
 
         {
-            'dimensions' {
+            'dimensions': {
                 <dim name>: <size>,
                 ...
             },

@@ -23,6 +23,7 @@ from netCDF4 import num2date
 
 from nchelpers import CFDataset
 from nchelpers.date_utils import time_to_seconds
+from nchelpers.exceptions import CFAttributeError, CFValueError
 
 from .helpers.nc_file_specs import spec
 from .helpers.time_values import suspicious_time_values, non_suspicious_time_values
@@ -751,6 +752,197 @@ def test_time_steps(tiny_dataset, start_time, end_time):
     assert len(time_steps['datetime']) == len(time[:])
     for i in [0, -1]:
         assert time_steps['datetime'][i] == num2date(time[i], time.units, time.calendar)
+
+
+# TODO: Make this a fixture (indirect)?
+def proj4_string_nc_spec(crs_attrs):
+    return {
+        'dimensions': {
+            'time': 2,
+        },
+        'variables': {
+            'var': {
+                 'dimensions': ('time',),
+                 'datatype': 'f4',
+                 'attrs': {
+                     'grid_mapping': 'crs',
+                 },
+            },
+            'crs': {
+                'dimensions': (),
+                'datatype': 'c',
+                'attrs': crs_attrs,
+            }
+        }
+    }
+
+
+@mark.parametrize('fake_nc_dataset, expected_proj4_string', [
+    (
+        proj4_string_nc_spec({
+            'grid_mapping_name': 'polar_stereographic',
+            'standard_parallel': 11,
+            'latitude_of_projection_origin': 12,
+            'straight_vertical_longitude_from_pole': 13,
+            'false_easting': 14,
+            'false_northing': 15,
+        }),
+        '+proj=stere +lat_ts=11 +lat_0=12 +lon_0=13 +x_0=14 +y_0=15 +k_0=1'
+    ),
+    (
+        proj4_string_nc_spec({
+            'grid_mapping_name': 'rotated_latitude_longitude',
+            'north_pole_latitude': 40,
+            'north_pole_longitude': 50,
+        }),
+        '+proj=ob_tran +o_proj=longlat +lon_0=-130.0 +o_lat_p=40 '
+        '+a=1 +to_meter=0.0174532925199 +no_defs'
+    ),
+    (
+        proj4_string_nc_spec({
+            'grid_mapping_name': 'rotated_latitude_longitude',
+            'grid_north_pole_latitude': 40,
+            'grid_north_pole_longitude': 50,
+        }),
+        '+proj=ob_tran +o_proj=longlat +lon_0=-130.0 +o_lat_p=40 '
+        '+a=1 +to_meter=0.0174532925199 +no_defs'
+    ),
+    (
+        proj4_string_nc_spec({
+            'grid_mapping_name': 'lambert_conformal_conic',
+            'standard_parallel': 11,
+            'latitude_of_projection_origin': 12,
+            'longitude_of_central_meridian': 13,
+            'false_easting': 14,
+            'false_northing': 15,
+        }),
+        # TODO: Is this a legitimate definition string ('+lat2=')?
+        '+proj=lcc +lat_0=12 +lat_1=11 +lat_2= +lon_0=13 +x_0=14 +y_0=15'
+    ),
+    (
+        proj4_string_nc_spec({
+            'grid_mapping_name': 'lambert_conformal_conic',
+            'standard_parallel': (11.1, 11.2),
+            'latitude_of_projection_origin': 12,
+            'longitude_of_central_meridian': 13,
+            'false_easting': 14,
+            'false_northing': 15,
+        }),
+        '+proj=lcc +lat_0=12 +lat_1=11.1 +lat_2=11.2 +lon_0=13 +x_0=14 +y_0=15'
+    ),
+    (
+        proj4_string_nc_spec({
+            'grid_mapping_name': 'transverse_mercator',
+            'latitude_of_projection_origin': 12,
+            'longitude_of_central_meridian': 13,
+            'false_easting': 14,
+            'false_northing': 15,
+            'scale_factor_at_central_meridian': 16,
+        }),
+        '+proj=tmerc +lat_0=12 +lon_0=13 +x_0=14 +y_0=15 +k_0=16'
+    ),
+    (
+        proj4_string_nc_spec({  ##
+            'grid_mapping_name': 'latitude_longitude',
+            'semi_major_axis': 10,
+            'semi_minor_axis': 11,
+            'inverse_flattening': 12,
+            'longitude_of_prime_meridian': 13,
+        }),
+        '+proj=longlat +a=10 +rf=12 +b=11 +lon_0=13'
+    ),
+    (
+        proj4_string_nc_spec({
+            'grid_mapping_name': 'latitude_longitude',
+            'semi_major_axis': 10,
+            'longitude_of_prime_meridian': 13,
+        }),
+        '+proj=longlat +a=10 +lon_0=13'
+    ),
+], indirect=['fake_nc_dataset'])
+def test_proj4_string(fake_nc_dataset, expected_proj4_string):
+    cf = CFDataset(fake_nc_dataset)
+    proj4_string = cf.proj4_string('var')
+    assert set(proj4_string.split()) == set(expected_proj4_string.split())
+
+
+@mark.parametrize('fake_nc_dataset, exception, exception_check', [
+    # No CRS info (missing ``grid_mapping`` attribute on var)
+    (
+        {
+            'dimensions': {
+                'time': 2,
+            },
+            'variables': {
+                'var': {
+                    'dimensions': ('time',),
+                    'datatype': 'f4',
+                },
+            }
+        },
+        CFAttributeError,
+        lambda excinfo:
+            'No coordinate reference system metadata found' in str(excinfo.value)
+    ),
+    # Missing ``grid_mapping_name`` attribute on CRS variable
+    (
+        proj4_string_nc_spec({}),
+        CFAttributeError,
+        lambda excinfo: (
+            'grid_mapping_name' in str(excinfo.value) and
+            'no such attribute' in str(excinfo.value)
+        )
+    ),
+    # Bad projection name (``grid_mapping_name``)
+    (
+        proj4_string_nc_spec({
+            'grid_mapping_name': 'foo',
+        }),
+        CFValueError,
+        lambda excinfo: (
+            'grid_mapping_name' in str(excinfo.value) and
+            'not a recognized value' in str(excinfo.value)
+        )
+    ),
+    # Missing projection parameter attributes
+    (
+        proj4_string_nc_spec({
+            'grid_mapping_name': 'polar_stereographic',
+            'standard_parallel': 11,
+        }),
+        CFAttributeError,
+        lambda excinfo: 'no such attribute' in str(excinfo.value)
+    ),
+    (
+        proj4_string_nc_spec({
+            'grid_mapping_name': 'rotated_latitude_longitude',
+            'north_pole_latitude': 11,
+        }),
+        CFAttributeError,
+        lambda excinfo: 'no such attribute' in str(excinfo.value)
+    ),
+    # Invalid number of lats for Lambert conformal conic
+    (
+        proj4_string_nc_spec({
+            'grid_mapping_name': 'lambert_conformal_conic',
+            'standard_parallel': (11.1, 11.2, 11.3),
+            'latitude_of_projection_origin': 12,
+            'longitude_of_central_meridian': 13,
+            'false_easting': 14,
+            'false_northing': 15,
+        }),
+        CFValueError,
+        lambda excinfo: (
+            'standard_parallel' in str(excinfo.value) and
+            'length exactly 2' in str(excinfo.value)
+        )
+    ),
+], indirect=['fake_nc_dataset'])
+def test_proj4_string_raises(fake_nc_dataset, exception, exception_check):
+    cf = CFDataset(fake_nc_dataset)
+    with raises(exception) as excinfo:
+        proj4_string = cf.proj4_string('var')
+    assert exception_check(excinfo)
 
 
 @mark.parametrize('tiny_dataset, expected', [
