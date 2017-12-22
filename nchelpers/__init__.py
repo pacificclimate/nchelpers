@@ -1291,7 +1291,7 @@ class CFDataset(Dataset):
             raise CFValueError(
                 'No axis is attributed with longitude information')
 
-    def proj4_string(self, var_name):
+    def proj4_string(self, var_name, default=None):
         """
         Return a PROJ.4 definition string for the specified variable, based
         on the `CF Convention standard projection definition attributes
@@ -1299,12 +1299,20 @@ class CFDataset(Dataset):
         defined in the NetCDF file for that variable.
 
         :param var_name: (str) name of variable
+        :param default: (str) default value in case no CRS data is detected
         :returns (str): PROJ.4 definition string
         :raises:
             ``CFAttributeError`` if any expected CF Conventions standard metadata
             attribute is missing.
             ``CFValueError`` if the projection name specified in the metadata is
             not recognized (i.e., not covered by one of the functions below).
+
+        The default value is returned when (a) it is not None and (b) no CRS
+        data appears to be defined for the variable, which is equivalent to the
+        condition that the variable has no attribute ``grid_mapping``.
+
+        Exceptions are raised for all other erroneous CRS metadata conditions
+        regardless of the value of ``default``.
         """
 
         # The following functions return a PROJ.4 definition string for
@@ -1424,6 +1432,8 @@ class CFDataset(Dataset):
             grid_mapping_var_name = getattr(
                 self.variables[var_name], 'grid_mapping')
         except AttributeError:
+            if default is not None:
+                return default
             raise CFAttributeError(
                 'No coordinate reference system metadata found in file.')
         grid_mapping_var = self.variables[grid_mapping_var_name]

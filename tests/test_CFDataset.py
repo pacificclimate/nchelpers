@@ -777,7 +777,19 @@ def proj4_string_nc_spec(crs_attrs):
     }
 
 
+proj4_string_no_CRS_nc_spec = {
+    'dimensions': {'time': 2, },
+    'variables': {
+        'var': {
+            'dimensions': ('time',),
+            'datatype': 'f4',
+        },
+    }
+}
+
+
 @mark.parametrize('fake_nc_dataset, expected_proj4_string', [
+    # Test each of the supported projections
     (
         proj4_string_nc_spec({
             'grid_mapping_name': 'polar_stereographic',
@@ -866,20 +878,19 @@ def test_proj4_string(fake_nc_dataset, expected_proj4_string):
     assert set(proj4_string.split()) == set(expected_proj4_string.split())
 
 
+@mark.parametrize('fake_nc_dataset, default', [
+    (proj4_string_no_CRS_nc_spec, 'foo'),
+], indirect=['fake_nc_dataset'])
+def test_proj4_string_default(fake_nc_dataset, default):
+    cf = CFDataset(fake_nc_dataset)
+    proj4_string = cf.proj4_string('var', default=default)
+    assert proj4_string == default
+
+
 @mark.parametrize('fake_nc_dataset, exception, exception_check', [
     # No CRS info (missing ``grid_mapping`` attribute on var)
     (
-        {
-            'dimensions': {
-                'time': 2,
-            },
-            'variables': {
-                'var': {
-                    'dimensions': ('time',),
-                    'datatype': 'f4',
-                },
-            }
-        },
+        proj4_string_no_CRS_nc_spec,
         CFAttributeError,
         lambda excinfo:
             'No coordinate reference system metadata found' in str(excinfo.value)
