@@ -788,7 +788,7 @@ proj4_string_no_CRS_nc_spec = {
 }
 
 
-@mark.parametrize('fake_nc_dataset, expected_proj4_string', [
+@mark.parametrize('fake_nc_dataset, options, expected_proj4_string', [
     # Test each of the supported projections
     (
         proj4_string_nc_spec({
@@ -799,7 +799,9 @@ proj4_string_no_CRS_nc_spec = {
             'false_easting': 14,
             'false_northing': 15,
         }),
-        '+proj=stere +lat_ts=11 +lat_0=12 +lon_0=13 +x_0=14 +y_0=15 +k_0=1'
+        {},
+        '+proj=stere +ellps=WGS84 +lat_ts=11 +lat_0=12 '
+        '+lon_0=13 +x_0=14 +y_0=15 +k_0=1'
     ),
     (
         proj4_string_nc_spec({
@@ -807,6 +809,7 @@ proj4_string_no_CRS_nc_spec = {
             'north_pole_latitude': 40,
             'north_pole_longitude': 50,
         }),
+        {},
         '+proj=ob_tran +o_proj=longlat +lon_0=-130.0 +o_lat_p=40 '
         '+a=1 +to_meter=0.0174532925199 +no_defs'
     ),
@@ -816,6 +819,7 @@ proj4_string_no_CRS_nc_spec = {
             'grid_north_pole_latitude': 40,
             'grid_north_pole_longitude': 50,
         }),
+        {},
         '+proj=ob_tran +o_proj=longlat +lon_0=-130.0 +o_lat_p=40 '
         '+a=1 +to_meter=0.0174532925199 +no_defs'
     ),
@@ -828,8 +832,10 @@ proj4_string_no_CRS_nc_spec = {
             'false_easting': 14,
             'false_northing': 15,
         }),
+        {},
         # TODO: Is this a legitimate definition string ('+lat2=')?
-        '+proj=lcc +lat_0=12 +lat_1=11 +lat_2= +lon_0=13 +x_0=14 +y_0=15'
+        '+proj=lcc +ellps=WGS84 +lat_0=12 +lat_1=11 +lat_2= '
+        '+lon_0=13 +x_0=14 +y_0=15'
     ),
     (
         proj4_string_nc_spec({
@@ -840,7 +846,9 @@ proj4_string_no_CRS_nc_spec = {
             'false_easting': 14,
             'false_northing': 15,
         }),
-        '+proj=lcc +lat_0=12 +lat_1=11.1 +lat_2=11.2 +lon_0=13 +x_0=14 +y_0=15'
+        {},
+        '+proj=lcc +ellps=WGS84 +lat_0=12 +lat_1=11.1 +lat_2=11.2 '
+        '+lon_0=13 +x_0=14 +y_0=15'
     ),
     (
         proj4_string_nc_spec({
@@ -851,16 +859,18 @@ proj4_string_no_CRS_nc_spec = {
             'false_northing': 15,
             'scale_factor_at_central_meridian': 16,
         }),
-        '+proj=tmerc +lat_0=12 +lon_0=13 +x_0=14 +y_0=15 +k_0=16'
+        {},
+        '+proj=tmerc +ellps=WGS84 +lat_0=12 +lon_0=13 +x_0=14 +y_0=15 +k_0=16'
     ),
     (
-        proj4_string_nc_spec({  ##
+        proj4_string_nc_spec({
             'grid_mapping_name': 'latitude_longitude',
             'semi_major_axis': 10,
             'semi_minor_axis': 11,
             'inverse_flattening': 12,
             'longitude_of_prime_meridian': 13,
         }),
+        {},
         '+proj=longlat +a=10 +rf=12 +b=11 +lon_0=13'
     ),
     (
@@ -869,22 +879,41 @@ proj4_string_no_CRS_nc_spec = {
             'semi_major_axis': 10,
             'longitude_of_prime_meridian': 13,
         }),
+        {},
         '+proj=longlat +a=10 +lon_0=13'
     ),
+    (
+        proj4_string_no_CRS_nc_spec,
+        {'default': 'foo'},
+        'foo'
+    ),
+    (
+        proj4_string_nc_spec({
+            'grid_mapping_name': 'polar_stereographic',
+            'standard_parallel': 11,
+            'latitude_of_projection_origin': 12,
+            'straight_vertical_longitude_from_pole': 13,
+            'false_easting': 14,
+            'false_northing': 15,
+        }),
+        {'ellps': 'foo'},
+        '+proj=stere +ellps=foo +lat_ts=11 +lat_0=12 '
+        '+lon_0=13 +x_0=14 +y_0=15 +k_0=1'
+    ),
 ], indirect=['fake_nc_dataset'])
-def test_proj4_string(fake_nc_dataset, expected_proj4_string):
+def test_proj4_string(fake_nc_dataset, options, expected_proj4_string):
     cf = CFDataset(fake_nc_dataset)
-    proj4_string = cf.proj4_string('var')
+    proj4_string = cf.proj4_string('var', **options)
     assert set(proj4_string.split()) == set(expected_proj4_string.split())
 
 
-@mark.parametrize('fake_nc_dataset, default', [
-    (proj4_string_no_CRS_nc_spec, 'foo'),
-], indirect=['fake_nc_dataset'])
-def test_proj4_string_default(fake_nc_dataset, default):
-    cf = CFDataset(fake_nc_dataset)
-    proj4_string = cf.proj4_string('var', default=default)
-    assert proj4_string == default
+# @mark.parametrize('fake_nc_dataset, options, expected', [
+#     (proj4_string_no_CRS_nc_spec, {'default': 'foo'}),
+# ], indirect=['fake_nc_dataset'])
+# def test_proj4_string_options(fake_nc_dataset, options, expected):
+#     cf = CFDataset(fake_nc_dataset)
+#     proj4_string = cf.proj4_string('var', **options)
+#     assert proj4_string == expected
 
 
 @mark.parametrize('fake_nc_dataset, exception, exception_check', [

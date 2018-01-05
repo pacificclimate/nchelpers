@@ -1291,7 +1291,7 @@ class CFDataset(Dataset):
             raise CFValueError(
                 'No axis is attributed with longitude information')
 
-    def proj4_string(self, var_name, default=None):
+    def proj4_string(self, var_name, default=None, ellps='WGS84'):
         """
         Return a PROJ.4 definition string for the specified variable, based
         on the `CF Convention standard projection definition attributes
@@ -1300,6 +1300,9 @@ class CFDataset(Dataset):
 
         :param var_name: (str) name of variable
         :param default: (str) default value in case no CRS data is detected
+        :param ellps: (str) default value for proj4 parameter +ellps in cases
+            (projections) where the CF Conventions do not specify metadata
+            attributes for the Earth's figure (geoid).
         :returns (str): PROJ.4 definition string
         :raises:
             ``CFAttributeError`` if any expected CF Conventions standard metadata
@@ -1319,7 +1322,7 @@ class CFDataset(Dataset):
         # the specific cases we handle. Each is named with the
         # ``grid_mapping_name`` defined in the CF Convention standard.
 
-        def polar_stereographic(var):
+        def polar_stereographic(var, ellps=ellps):
             """
             Return PROJ.4 definition string for a polar stereographic
             projection.
@@ -1334,7 +1337,8 @@ class CFDataset(Dataset):
             if y_0 == '':
                 y_0 = 0
             return (
-                '+proj=stere +lat_ts={lat_ts} +lat_0={lat_0} +lon_0={lon_0} '
+                '+proj=stere +ellps={ellps} '
+                '+lat_ts={lat_ts} +lat_0={lat_0} +lon_0={lon_0} '
                 '+x_0={x_0} +y_0={y_0} +k_0=1'
                     .format(**locals())
             )
@@ -1363,7 +1367,7 @@ class CFDataset(Dataset):
                     .format(**locals())
             )
 
-        def lambert_conformal_conic(var):
+        def lambert_conformal_conic(var, ellps=ellps):
             """
             Return PROJ.4 definition string for a Lambert conformal conic
             projection.
@@ -1386,12 +1390,13 @@ class CFDataset(Dataset):
             y_0 = getattr_cf_error(var, 'false_northing')
             
             return (
-                '+proj=lcc +lat_0={lat_0} +lat_1={lat_1} +lat_2={lat_2} '
+                '+proj=lcc +ellps={ellps} '
+                '+lat_0={lat_0} +lat_1={lat_1} +lat_2={lat_2} '
                 '+lon_0={lon_0} +y_0={y_0} +x_0={x_0}'
                     .format(**locals())
             )
 
-        def transverse_mercator(var):
+        def transverse_mercator(var, ellps=ellps):
             """
             Return PROJ.4 definition string for a transverse Mercator
             projection.
@@ -1403,7 +1408,8 @@ class CFDataset(Dataset):
             y_0 = getattr_cf_error(var, 'false_northing')
             
             return (
-                '+proj=tmerc +lat_0={lat_0} +lon_0={lon_0} '
+                '+proj=tmerc +ellps={ellps} '
+                '+lat_0={lat_0} +lon_0={lon_0} '
                 '+k_0={k_0} +x_0={x_0} +y_0={y_0}'
                     .format(**locals())
             )
