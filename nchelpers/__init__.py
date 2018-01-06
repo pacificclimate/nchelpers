@@ -22,13 +22,33 @@ from cached_property import cached_property
 import numpy as np
 import six
 
-from netCDF4 import Dataset, num2date, date2num
+from netCDF4 import Dataset, Variable, num2date, date2num
 from nchelpers.date_utils import \
     time_scale, resolution_standard_name, \
     time_to_seconds, seconds_to_time, \
     d2ss, to_datetime
 from nchelpers.decorators import prevent_infinite_recursion
 from nchelpers.exceptions import CFAttributeError, CFValueError
+
+def getattr_cf_error(object, attr_name):
+    """
+    Get an attribute from a (nominally ``NetCDF4.Dataset`` or ``.Variable``)
+    object, and raise an informative CFAttributeError if no such
+    attribute exists.
+    """
+    try:
+        return getattr(object, attr_name)
+    except AttributeError:
+        if isinstance(object, Dataset):
+            object_name = 'file'
+        elif isinstance(object, Variable):
+            object_name = 'variable {}'.format(object.name)
+        else:
+            object_name = 'object of type {}'.format(type(object))
+        raise CFAttributeError(
+            "Expected {} to have attribute '{}', but no such attribute exists"
+                .format(object_name, attr_name)
+        )
 
 # Map of nchelpers time resolution strings to MIP table names, standard where
 # possible. For an explanation of the content of this map, see the discussion
@@ -48,6 +68,11 @@ standard_tres_to_mip_table = {
     'monthly': 'mon',  # frequency std
     'yearly': 'yr',  # frequency std
 }
+
+
+def _normalize180(x):
+    """Normalize a longitude value to the range [-180, 180)."""
+    return (x + 180.0) % 360.0 - 180.0
 
 
 def _cmor_formatted_time_range(t_min, t_max, time_resolution='daily'):
@@ -842,29 +867,34 @@ class CFDataset(Dataset):
     # Variables - general
 
     def dependent_varnames(self, dim_names=set()):
-        """A list of the names of the dependent (non-dimension) variables
-        in this file, optionally specified by dependence on specific
+        """A list of the names of the dependent variables (see definition below)
+        in this file, optionally limited by dependence on a specified set of
         dimensions.
 
         :param dim_names: (str or iterable(str)) name(s) of dimensions
             the returned variables must be dependent on.
 
+        A *dependent variable* is a variable that is
+
+        a. not a dimension, and
+        b. dependent on (i.e., whose shape is defined by) one or more
+           dimensions.
+
+        Many variables in a NetCDF file are not dependent. These include:
+
+        - dimensions
+        - bounds variables
+        - variables not dependent on any dimensions; in particular,
+          variables used to carry coordinate reference system attributes
+
+        The parameter ``dim_names`` specifies dimensions that the dependent
+        variable(s) must be dependent on.
         A returned variable can be dependent on other dimensions in addition to
-        those specified by ``dimensions``, i.e., its set of dimensions need only
-        be a superset of the specified dimensions.
+        those specified by ``dim_names``.
 
-        An empty set of dimensions returns all dependent variables regardless
-        of dimensions.
-
-        Many variables in a NetCDF file describe the *structure* of the data
-        and aren't necessarily the values that we actually care about. For
-        example a file with temperature data also has to include
-        latitude/longitude variables, a time variable, and possibly bounds
-        variables for each of the dimensions. These dimensions and bounds
-        are independent variables.
-
-        This function returns the names of the "important" (dependent)
-        variables, with the "unimportant" ones filtered out.
+        When ``dim_names`` is the empty set, all dependent variables are
+        returned regardless of dimensions. (Since the set of dimensions of any
+        variable is a superset of the empty set.)
         """
         if isinstance(dim_names, six.string_types):
             dim_names = {dim_names}
@@ -876,8 +906,11 @@ class CFDataset(Dataset):
                 'Invalid dimensions argument: must be None, str,'
                 ' or iterable(str)')
 
-        var_names = {variable.name for variable in self.variables.values()
-                     if dim_names <= set(variable.dimensions)}
+        var_names = {
+            variable.name for variable in self.variables.values()
+            if len(variable.dimensions) > 0 and
+               dim_names <= set(variable.dimensions)
+        }
         non_dependent_var_names = set(self.dimensions.keys())
         for variable in self.variables.values():
             if hasattr(variable, 'bounds'):
@@ -1257,6 +1290,171 @@ class CFDataset(Dataset):
         except KeyError:
             raise CFValueError(
                 'No axis is attributed with longitude information')
+
+    def proj4_string(self, var_name, default=None, ellps='WGS84'):
+        """
+        Return a PROJ.4 definition string for the specified variable, based
+        on the `CF Convention standard projection definition attributes
+        <http://cfconventions.org/Data/cf-conventions/cf-conventions-1.7/build/ch05s06.html>`_
+        defined in the NetCDF file for that variable.
+
+        :param var_name: (str) name of variable
+        :param default: (str) default value in case no CRS data is detected
+        :param ellps: (str) default value for proj4 parameter +ellps in cases
+            (projections) where the CF Conventions do not specify metadata
+            attributes for the Earth's figure (geoid).
+        :returns (str): PROJ.4 definition string
+        :raises:
+            ``CFAttributeError`` if any expected CF Conventions standard metadata
+            attribute is missing.
+            ``CFValueError`` if the projection name specified in the metadata is
+            not recognized (i.e., not covered by one of the functions below).
+
+        The default value is returned when (a) it is not None and (b) no CRS
+        data appears to be defined for the variable, which is equivalent to the
+        condition that the variable has no attribute ``grid_mapping``.
+
+        Exceptions are raised for all other erroneous CRS metadata conditions
+        regardless of the value of ``default``.
+        """
+
+        # The following functions return a PROJ.4 definition string for
+        # the specific cases we handle. Each is named with the
+        # ``grid_mapping_name`` defined in the CF Convention standard.
+
+        def polar_stereographic(var, ellps=ellps):
+            """
+            Return PROJ.4 definition string for a polar stereographic
+            projection.
+            """
+            lat_ts = getattr_cf_error(var, 'standard_parallel')
+            lat_0 = getattr_cf_error(var, 'latitude_of_projection_origin')
+            lon_0 = getattr_cf_error(var, 'straight_vertical_longitude_from_pole')
+            x_0 = getattr_cf_error(var, 'false_easting')
+            y_0 = getattr_cf_error(var, 'false_northing')
+            if x_0 == '':
+                x_0 = 0
+            if y_0 == '':
+                y_0 = 0
+            return (
+                '+proj=stere +ellps={ellps} '
+                '+lat_ts={lat_ts} +lat_0={lat_0} +lon_0={lon_0} '
+                '+x_0={x_0} +y_0={y_0} +k_0=1'
+                    .format(**locals())
+            )
+
+        def rotated_latitude_longitude(var):
+            """
+            Return PROJ.4 definition string for a rotated pole grid.
+            """
+            try:
+                lat_0 = getattr_cf_error(var, "north_pole_latitude")
+                lon_0 = getattr_cf_error(var, "north_pole_longitude")
+            except CFAttributeError:
+                lat_0 = getattr_cf_error(var, "grid_north_pole_latitude")
+                lon_0 = getattr_cf_error(var, "grid_north_pole_longitude")
+
+            # TODO: Verify this computation and the form of the string below.
+            lon_0 = _normalize180(lon_0 + 180)
+
+            # Comment below is from original R code.
+            # The more or less direct way here is to generate an inverse
+            # projection by feeding the values directly in as o_lon_p and
+            # o_lat_p; this is to generate a normal, forward projection.
+            return (
+                '+proj=ob_tran +o_proj=longlat +lon_0={lon_0} +o_lat_p={lat_0} '
+                '+a=1 +to_meter=0.0174532925199 +no_defs'
+                    .format(**locals())
+            )
+
+        def lambert_conformal_conic(var, ellps=ellps):
+            """
+            Return PROJ.4 definition string for a Lambert conformal conic
+            projection.
+            """
+            lat_ts = getattr_cf_error(var, 'standard_parallel')
+            if isinstance(lat_ts, np.ndarray):
+                if lat_ts.size != 2:
+                    raise CFValueError(
+                        'List of standard_parallel values must have length '
+                        'exactly 2')
+                lat_1, lat_2 = lat_ts
+            else:
+                lat_1 = lat_ts
+                # TODO: Is it really legit to have component '+lat2=' in
+                # PROJ.4 defn string?
+                lat_2 = ''
+            lat_0 = getattr_cf_error(var, 'latitude_of_projection_origin')
+            lon_0 = getattr_cf_error(var, 'longitude_of_central_meridian')
+            x_0 = getattr_cf_error(var, 'false_easting')
+            y_0 = getattr_cf_error(var, 'false_northing')
+            
+            return (
+                '+proj=lcc +ellps={ellps} '
+                '+lat_0={lat_0} +lat_1={lat_1} +lat_2={lat_2} '
+                '+lon_0={lon_0} +y_0={y_0} +x_0={x_0}'
+                    .format(**locals())
+            )
+
+        def transverse_mercator(var, ellps=ellps):
+            """
+            Return PROJ.4 definition string for a transverse Mercator
+            projection.
+            """
+            lat_0 = getattr_cf_error(var, 'latitude_of_projection_origin')
+            lon_0 = getattr_cf_error(var, 'longitude_of_central_meridian')
+            k_0 = getattr_cf_error(var, 'scale_factor_at_central_meridian')
+            x_0 = getattr_cf_error(var, 'false_easting')
+            y_0 = getattr_cf_error(var, 'false_northing')
+            
+            return (
+                '+proj=tmerc +ellps={ellps} '
+                '+lat_0={lat_0} +lon_0={lon_0} '
+                '+k_0={k_0} +x_0={x_0} +y_0={y_0}'
+                    .format(**locals())
+            )
+
+        def latitude_longitude(var):
+            """
+            Return PROJ.4 definition string for a latitude-longitude
+            (spherical earth) projection.
+            """
+            parts = ["+proj=longlat"]
+
+            for template, attr_name in (
+                    ('+a={}', 'semi_major_axis'),
+                    ('+rf={}', 'inverse_flattening'),
+                    ('+b={}', 'semi_minor_axis'),
+                    ('+lon_0={}', 'longitude_of_prime_meridian'),
+            ):
+                try:
+                    parts.append(template.format(getattr(var, attr_name)))
+                except AttributeError:
+                    pass
+
+            return ' '.join(parts)
+
+        try:
+            grid_mapping_var_name = getattr(
+                self.variables[var_name], 'grid_mapping')
+        except AttributeError:
+            if default is not None:
+                return default
+            raise CFAttributeError(
+                'No coordinate reference system metadata found in file.')
+        grid_mapping_var = self.variables[grid_mapping_var_name]
+        grid_mapping_name = getattr_cf_error(
+            grid_mapping_var, 'grid_mapping_name')
+        try:
+            # Select the function that returns the desired PROJ.4 definition
+            # string, and invoke it. Using ``locals()`` here is slightly fragile
+            # (``locals()`` contains other objects than the PROJ.4 functions),
+            # but it is handy and concise.
+            return locals()[grid_mapping_name](grid_mapping_var)
+        except KeyError:
+            raise CFValueError(
+                "'{}' is not a recognized value for grid_mapping_name"
+            )
 
     ###########################################################################
     # Standard file identifiers
