@@ -1,6 +1,14 @@
 News / Release Notes
 ====================
 
+5.3.0
+-----
+
+*Release Date: 10-Jan-2018*
+
+* Add method ``CFDataset.proj4_string(var_name)``(https://github.com/pacificclimate/nchelpers/issues/50) that returns
+  a PROJ.4 string describing the coordinate reference system (CRS) defined in the file's metadata for that variable.
+
 5.2.0
 -----
 
