@@ -522,6 +522,12 @@ class CFDataset(Dataset):
                 raise CFAttributeError(
                     'GCM attributes have no meaning for a hydrological model '
                     'forced by observational data')
+            elif self.dataset.is_streamflow_model_dgcm_output:
+                prefix = 'hydromodel__downscaling__GCM__'
+            elif self.dataset.is_streamflow_model_iobs_output:
+                raise CFAttributeError(
+                    'GCM attributes have no meaning for a streamflow model '
+                    'forced by observational data')
             elif (self.dataset.is_climdex_ds_gcm_output):
                 prefix = 'downscaling__GCM__'
             else:
@@ -577,6 +583,33 @@ class CFDataset(Dataset):
 
     ###########################################################################
     # File content type
+
+    @property
+    def sampling_geometry(self):
+        """Return a string indicating the sampling geometry of the file.
+        Sampling geometry indicates how the spatial coordinates for dependent
+        variables in the file are defined.
+
+        Currently we recognize the following types:
+
+        - Gridded: the familiar XY (typically lat/long) grids.
+            - output value: 'gridded'
+
+        - Discrete Sampling Geometry (DSG). Subtypes:
+            - timeSeries: Spatial locations are defined by a set of stations at
+                arbitrary XY locations. They are not on a grid. For more info,
+                see
+                https://pcic.uvic.ca/confluence/display/CSG/Modeling+Discrete+Geometry+Datasets
+                http://cfconventions.org/Data/cf-conventions/cf-conventions-1.7/build/ch09.html
+                    - output value: 'dsg.timeSeries'
+
+
+        """
+        try:
+            return 'dsg.{}'.format(self.featureType)
+        except AttributeError:
+            # TODO: Check more carefully for gridded datasets?
+            return 'gridded'
 
     @property
     def is_multi_year_mean(self):
@@ -699,6 +732,27 @@ class CFDataset(Dataset):
                 and self.forcing_type == 'gridded observations')
 
     @property
+    def is_streamflow_model_output(self):
+        """True iff the content of the file is streamflow model output of
+        any kind."""
+        return self.product == 'streamflow model output'
+
+    @property
+    def is_streamflow_model_dgcm_output(self):
+        """True iff the content of the file is output of a hydrological model
+        forced by downscaled GCM data."""
+        return (self.is_gcm_derivative
+                and self.is_streamflow_model_output
+                and self.hydromodel__forcing_type == 'downscaled gcm')
+
+    @property
+    def is_streamflow_model_iobs_output(self):
+        """True iff the content of the file is output of a hydrological
+        model forced by interpolated observational data."""
+        return (self.is_streamflow_model_output
+                and self.hydromodel__forcing_type == 'gridded observations')
+
+    @property
     def is_climdex_output(self):
         """True iff the content of the file is output of climdex processing."""
         return self.product == 'CLIMDEX output'
@@ -725,7 +779,7 @@ class CFDataset(Dataset):
         return self.is_other and self.product == 'gridded observations'
 
     ###########################################################################
-    # Dimensions and axes
+    # Dimensions and axes (gridded datasets)
 
     def axes_dim(self, dim_names=None):
         """Return a dictionary mapping canonical axis names to specified
@@ -863,6 +917,14 @@ class CFDataset(Dataset):
                     .format(var_name, compressed_axis_names))
         # TODO: Verify that compressed axis names are always in the order Y, X
         return {'X': compressed_axis_names[1], 'Y': compressed_axis_names[0]}
+
+
+    ###########################################################################
+    # Instance dimensions and instance variables (discrete sampling geometry)
+
+    def instance_dim_names(self, var_name=None):
+        """Return the names of instance dimensions of a named  """
+
 
     ###########################################################################
     # Variables - general
@@ -1275,6 +1337,86 @@ class CFDataset(Dataset):
             return self.time_bounds_extrema(nominal=True, closed=True)
         else:
             return self.time_range
+
+    ###########################################################################
+    # Variables - for DSG files
+
+    def _check_dsg_sampling_geometry(self):
+        if self.sampling_geometry != 'dsg.timeSeries':
+            raise CFValueError(
+                'Coordinate variables are defined only for files with '
+                'discrete sampling geometry. This file has a sampling'
+                'geometry type of {}'.format(self.sampling_geometry))
+
+    def coordinate_vars(self, var_name):
+        """Return list of coordinate variables (instance variables) associated
+        with the named variable in this file.
+
+        Valid only for DSG files.
+        """
+        self._check_dsg_sampling_geometry()
+        variable = self.variables[var_name]
+        return [self.variables[name] for name in variable.coordinates.split()]
+
+    def instance_dim(self, var_name):
+        """Return the instance dimension associated with the named
+        variable in this file.
+
+        Valid only for DSG files.
+        """
+        self._check_dsg_sampling_geometry()
+        return self.dimensions[self.coordinate_vars(var_name)[0].dimensions[0]]
+
+    def id_instance_var(self, var_name, cf_role='timeseries_id'):
+        """Return the instance variable associated with the named
+        variable in this file with attribute cf_role equal to specified cf_role.
+
+        IOW: Return the instance variable providing a unique id for the
+        instances of var_name in this file.
+
+        Valid only for DSG files.
+        """
+        self._check_dsg_sampling_geometry()
+        try:
+            return next(
+                c for c in self.coordinate_vars(var_name)
+                if getattr(c, 'cf_role', None) == cf_role
+            )
+        except StopIteration:
+            raise CFValueError(
+                'No coordinate of variable {} in this file has attribute '
+                'cf_role with value {}'.format(var_name, cf_role))
+
+    def spatial_instance_var(self, var_name, axis):
+        """Return the spatial instance variable associated with the named
+        variable in this file for the specified axis (X/lon or Y/lat).
+
+        IOW: Return the instance variable providing a lon/lat for the
+        instances of var_name in this file.
+
+        Valid only for DSG files.
+        """
+        axis_to_coord_names = {
+            'X': ['lat', 'latitude'],
+            'Y': ['lon', 'longitude'],
+        }
+        try:
+            coord_names = axis_to_coord_names[axis.upper()]
+        except KeyError:
+            raise CFValueError(
+                'axis arg must be one of {}, but was {}'
+                .format(axis_to_coord_names.keys(), axis)
+            )
+        try:
+            return next(
+                c for c in self.coordinate_vars(var_name)
+                if c.name in coord_names
+            )
+        except StopIteration:
+            raise CFValueError(
+                'No coordinate of variable {} in this file has name in the'
+                'expected list of {}-axis names {}'
+                .format(var_name, axis, coord_names))
 
     ###########################################################################
     # Variables - spatial
