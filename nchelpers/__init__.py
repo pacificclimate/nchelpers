@@ -1397,8 +1397,8 @@ class CFDataset(Dataset):
         Valid only for DSG files.
         """
         axis_to_coord_names = {
-            'X': ['lat', 'latitude'],
-            'Y': ['lon', 'longitude'],
+            'X': ['lon', 'longitude'],
+            'Y': ['lat', 'latitude'],
         }
         try:
             coord_names = axis_to_coord_names[axis.upper()]
@@ -1683,6 +1683,12 @@ class CFDataset(Dataset):
                 components.update(
                     hydromodel_method=_replace_commas(self.method_id),
                     obs_dataset_id=self.observations__dataset_id,
+                    geo_info=getattr(self, 'domain', None)
+                )
+            elif self.is_streamflow_model_dgcm_output:
+                components.update(
+                    model=self.gcm.model_id,
+                    experiment=_replace_commas(self.gcm.experiment_id),
                     geo_info=getattr(self, 'domain', None)
                 )
             elif self.is_climdex_output:

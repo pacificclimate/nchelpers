@@ -78,6 +78,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('gcm', 'first_MiB_md5sum', '3eb812cca9366973b41078b0bf19fe3b'),
     ('gcm', 'md5', '3eb812cca9366973b41078b0bf19fe3b'),
     ('gcm', 'climatology_bounds_var_name', None),
+    ('gcm', 'sampling_geometry', 'gridded'),
     ('gcm', 'is_multi_year_mean', False),
     ('gcm', 'time_range', (5475.5, 9125.5)),
     ('gcm', 'time_step_size', time_to_seconds(1, 'days')),
@@ -87,6 +88,11 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('gcm', 'is_hydromodel_output', False),
     ('gcm', 'is_hydromodel_dgcm_output', False),
     # ('gcm', 'is_hydromodel_iobs_output', False), # TODO
+    ('gcm', 'is_streamflow_model_output', False),
+    ('gcm', 'is_streamflow_model_dgcm_output', False),
+    ('gcm', 'is_streamflow_model_iobs_output', False),
+    ('gcm', 'is_climdex_output', False),
+    ('gcm', 'is_climdex_ds_gcm_output', False),
     ('gcm', 'model_type', 'GCM'),
     ('gcm', 'ensemble_member', 'r1i1p1'),
     ('gcm', 'cmor_filename',
@@ -97,6 +103,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('downscaled', 'first_MiB_md5sum', '6ebca934615ad7e6bd328bcc6fa9058b'),
     ('downscaled', 'md5', '6ebca934615ad7e6bd328bcc6fa9058b'),
     ('downscaled', 'climatology_bounds_var_name', None),
+    ('downscaled', 'sampling_geometry', 'gridded'),
     ('downscaled', 'is_multi_year_mean', False),
     ('downscaled', 'time_range', (715509.5, 727196.5)),
     ('downscaled', 'time_step_size', time_to_seconds(1, 'days')),
@@ -106,6 +113,9 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('downscaled', 'is_hydromodel_output', False),
     ('downscaled', 'is_hydromodel_dgcm_output', False),
     # ('downscaled', 'is_hydromodel_iobs_output', False), # TODO
+    ('downscaled', 'is_streamflow_model_output', False),
+    ('downscaled', 'is_streamflow_model_dgcm_output', False),
+    ('downscaled', 'is_streamflow_model_iobs_output', False),
     ('downscaled', 'is_climdex_output', False),
     ('downscaled', 'is_climdex_ds_gcm_output', False),
     ('downscaled', 'model_type', 'GCM'),
@@ -118,6 +128,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('hydromodel_gcm', 'first_MiB_md5sum', '6544f8a39ba722e2085677525269c883'),
     ('hydromodel_gcm', 'md5', '36af1a6d4665fecf0d1a727a7cbdc6ef'),
     ('hydromodel_gcm', 'climatology_bounds_var_name', None),
+    ('hydromodel_gcm', 'sampling_geometry', 'gridded'),
     ('hydromodel_gcm', 'is_multi_year_mean', False),
     ('hydromodel_gcm', 'time_range', (0.0, 4382.0)),
     ('hydromodel_gcm', 'time_step_size', time_to_seconds(1, 'days')),
@@ -127,6 +138,9 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('hydromodel_gcm', 'is_hydromodel_output', True),
     ('hydromodel_gcm', 'is_hydromodel_dgcm_output', True),
     # ('hydromodel_gcm', 'is_hydromodel_iobs_output', False), # TODO
+    ('hydromodel_gcm', 'is_streamflow_model_output', False),
+    ('hydromodel_gcm', 'is_streamflow_model_dgcm_output', False),
+    ('hydromodel_gcm', 'is_streamflow_model_iobs_output', False),
     ('hydromodel_gcm', 'is_climdex_output', False),
     ('hydromodel_gcm', 'is_climdex_ds_gcm_output', False),
     ('hydromodel_gcm', 'model_type', 'GCM'),
@@ -145,6 +159,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('mClim_gcm', 'first_MiB_md5sum', '411cae3298be3ba38588fceba0992eb7'),
     ('mClim_gcm', 'md5', '411cae3298be3ba38588fceba0992eb7'),
     ('mClim_gcm', 'climatology_bounds_var_name', 'climatology_bnds'),
+    ('mClim_gcm', 'sampling_geometry', 'gridded'),
     ('mClim_gcm', 'is_multi_year_mean', True),
     ('mClim_gcm', 'time_resolution', 'monthly'),
     # actually so, though the term 'unprocessed' here is misleading
@@ -153,6 +168,9 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('mClim_gcm', 'is_hydromodel_output', False),
     ('mClim_gcm', 'is_hydromodel_dgcm_output', False),
     # ('mClim_gcm', 'is_hydromodel_iobs_output', False), # TODO
+    ('mClim_gcm', 'is_streamflow_model_output', False),
+    ('mClim_gcm', 'is_streamflow_model_dgcm_output', False),
+    ('mClim_gcm', 'is_streamflow_model_iobs_output', False),
     ('mClim_gcm', 'is_climdex_output', False),
     ('mClim_gcm', 'is_climdex_ds_gcm_output', False),
     ('mClim_gcm', 'model_type', 'GCM'),
@@ -164,6 +182,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('sClim_gcm', 'first_MiB_md5sum', 'ecd2a0a28ffc12cc795d4e6b623543b6'),
     ('sClim_gcm', 'md5', 'ecd2a0a28ffc12cc795d4e6b623543b6'),
     ('sClim_gcm', 'climatology_bounds_var_name', 'climatology_bnds'),
+    ('sClim_gcm', 'sampling_geometry', 'gridded'),
     ('sClim_gcm', 'is_multi_year_mean', True),
     ('sClim_gcm', 'time_resolution', 'seasonal'),
     # actually so, though the term 'unprocessed' here is misleading
@@ -172,6 +191,9 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('sClim_gcm', 'is_hydromodel_output', False),
     ('sClim_gcm', 'is_hydromodel_dgcm_output', False),
     # ('sClim_gcm', 'is_hydromodel_iobs_output', False), # TODO
+    ('sClim_gcm', 'is_streamflow_model_output', False),
+    ('sClim_gcm', 'is_streamflow_model_dgcm_output', False),
+    ('sClim_gcm', 'is_streamflow_model_iobs_output', False),
     ('sClim_gcm', 'is_climdex_output', False),
     ('sClim_gcm', 'is_climdex_ds_gcm_output', False),
     ('sClim_gcm', 'model_type', 'GCM'),
@@ -183,6 +205,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('aClim_gcm', 'first_MiB_md5sum', 'b002ec3839db4daffdad335ad0d31563'),
     ('aClim_gcm', 'md5', 'b002ec3839db4daffdad335ad0d31563'),
     ('aClim_gcm', 'climatology_bounds_var_name', 'climatology_bnds'),
+    ('aClim_gcm', 'sampling_geometry', 'gridded'),
     ('aClim_gcm', 'is_multi_year_mean', True),
     ('aClim_gcm', 'time_resolution', 'yearly'),
     # actually so, though the term 'unprocessed' here is misleading
@@ -191,6 +214,9 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('aClim_gcm', 'is_hydromodel_output', False),
     ('aClim_gcm', 'is_hydromodel_dgcm_output', False),
     # ('aClim_gcm', 'is_hydromodel_iobs_output', False), # TODO
+    ('aClim_gcm', 'is_streamflow_model_output', False),
+    ('aClim_gcm', 'is_streamflow_model_dgcm_output', False),
+    ('aClim_gcm', 'is_streamflow_model_iobs_output', False),
     ('aClim_gcm', 'is_climdex_output', False),
     ('aClim_gcm', 'is_climdex_ds_gcm_output', False),
     ('aClim_gcm', 'model_type', 'GCM'),
@@ -202,6 +228,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('climdex_ds_gcm', 'first_MiB_md5sum', '5cbe8412f19599f893ba28062e0d7a9b'),
     ('climdex_ds_gcm', 'md5', '5cbe8412f19599f893ba28062e0d7a9b'),
     ('climdex_ds_gcm', 'climatology_bounds_var_name', None),
+    ('climdex_ds_gcm', 'sampling_geometry', 'gridded'),
     ('climdex_ds_gcm', 'is_multi_year_mean', False),
     ('climdex_ds_gcm', 'time_range', (182.0, 54969.0)),
     ('climdex_ds_gcm', 'time_step_size', time_to_seconds(365, 'days')),
@@ -211,6 +238,9 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('climdex_ds_gcm', 'is_hydromodel_output', False),
     ('climdex_ds_gcm', 'is_hydromodel_dgcm_output', False),
     # ('climdex_ds_gcm', 'is_hydromodel_iobs_output', False), # TODO
+    ('climdex_ds_gcm', 'is_streamflow_model_output', False),
+    ('climdex_ds_gcm', 'is_streamflow_model_dgcm_output', False),
+    ('climdex_ds_gcm', 'is_streamflow_model_iobs_output', False),
     ('climdex_ds_gcm', 'is_climdex_output', True),
     ('climdex_ds_gcm', 'is_climdex_ds_gcm_output', True),
     ('climdex_ds_gcm', 'model_type', 'GCM'),
@@ -224,6 +254,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('gridded_obs', 'first_MiB_md5sum', '6e4b0f8968a18ffa917e34b68a3e5636'),
     ('gridded_obs', 'md5', '6e4b0f8968a18ffa917e34b68a3e5636'),
     ('gridded_obs', 'climatology_bounds_var_name', None),
+    ('gridded_obs', 'sampling_geometry', 'gridded'),
     ('gridded_obs', 'is_multi_year_mean', False),
     ('gridded_obs', 'time_range', (0.0, 3.0)),
     ('gridded_obs', 'time_step_size', time_to_seconds(1, 'days')),
@@ -233,10 +264,40 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('gridded_obs', 'is_hydromodel_output', False),
     ('gridded_obs', 'is_hydromodel_dgcm_output', False),
     # ('gridded_obs', 'is_hydromodel_iobs_output', False), # TODO
+    ('gridded_obs', 'is_streamflow_model_output', False),
+    ('gridded_obs', 'is_streamflow_model_dgcm_output', False),
+    ('gridded_obs', 'is_streamflow_model_iobs_output', False),
+    ('gridded_obs', 'is_climdex_output', False),
+    ('gridded_obs', 'is_climdex_ds_gcm_output', False),
     ('gridded_obs', 'cmor_filename',
      'pr_day_SYMAP_BC_v1_historical_19500101-19500104.nc'),
     ('gridded_obs', 'unique_id',
      'pr_day_SYMAP_BC_v1_historical_19500101-19500104'),
+
+    ('streamflow', 'first_MiB_md5sum', 'e399c143415d13b7eab6809daa9cfc2f'),
+    ('streamflow', 'md5', 'e399c143415d13b7eab6809daa9cfc2f'),
+    ('streamflow', 'climatology_bounds_var_name', None),
+    ('streamflow', 'sampling_geometry', 'dsg.timeSeries'),
+    ('streamflow', 'is_multi_year_mean', False),
+    ('streamflow', 'time_range', (710034.5, 710049.5)),
+    ('streamflow', 'time_step_size', time_to_seconds(1, 'days')),
+    ('streamflow', 'time_resolution', 'daily'),
+    ('streamflow', 'is_unprocessed_gcm_output', False),
+    ('streamflow', 'is_downscaled_output', False),
+    ('streamflow', 'is_hydromodel_output', False),
+    ('streamflow', 'is_hydromodel_dgcm_output', False),
+    # ('streamflow', 'is_hydromodel_iobs_output', False), # TODO
+    ('streamflow', 'is_streamflow_model_output', True),
+    ('streamflow', 'is_streamflow_model_dgcm_output', True),
+    ('streamflow', 'is_streamflow_model_iobs_output', False),
+    ('streamflow', 'is_climdex_output', False),
+    ('streamflow', 'is_climdex_ds_gcm_output', False),
+    ('streamflow', 'model_type', 'GCM'),
+    ('streamflow', 'ensemble_member', 'r1i2p3'),
+    ('streamflow', 'cmor_filename',
+     'streamflow_day_model_exp_r1i2p3_19450102-19450117.nc'),
+    ('streamflow', 'unique_id',
+     'streamflow_day_model_exp_r1i2p3_19450102-19450117'),
 
 ], indirect=['tiny_dataset'])
 def test_simple_property(tiny_dataset, prop, expected):
@@ -694,9 +755,25 @@ def test_axes_dim(tiny_dataset, expected):
     ('mClim_gcm', set(), {'tasmax'}),
     ('climdex_ds_gcm', set(), {'altcddETCCDI'}),
     ('gridded_obs', set(), {'pr'}),
+    ('streamflow', set(), {'streamflow'})
 ], indirect=['tiny_dataset'])
 def test_dependent_varnames(tiny_dataset, dim_names, expected):
     assert set(tiny_dataset.dependent_varnames(dim_names=dim_names)) == expected
+
+
+@mark.parametrize('tiny_dataset, var_name', [
+    ('streamflow', 'streamflow'),
+], indirect=['tiny_dataset'])
+@mark.parametrize('method, extra_args, instance_var_name', [
+    ('instance_dim', tuple(), 'outlets'),
+    ('id_instance_var', tuple(), 'outlet_name'),
+    ('spatial_instance_var', ('X',), 'lon'),
+    ('spatial_instance_var', ('Y',), 'lat'),
+])
+def test_dsg_dataset_vars(
+        tiny_dataset, var_name, method, extra_args, instance_var_name):
+    assert getattr(tiny_dataset, method)(var_name, *extra_args).name == \
+           instance_var_name
 
 
 @mark.parametrize('tiny_dataset', [
@@ -712,7 +789,7 @@ def test_dependent_varnames(tiny_dataset, dim_names, expected):
     ('lon_var', 'longitude'),
     ('lat_var', 'latitude'),
 ])
-def test_common_vars(tiny_dataset, property, standard_name):
+def test_gridded_dataset_vars(tiny_dataset, property, standard_name):
     assert getattr(tiny_dataset, property).standard_name == standard_name
 
 
