@@ -920,13 +920,6 @@ class CFDataset(Dataset):
 
 
     ###########################################################################
-    # Instance dimensions and instance variables (discrete sampling geometry)
-
-    def instance_dim_names(self, var_name=None):
-        """Return the names of instance dimensions of a named  """
-
-
-    ###########################################################################
     # Variables - general
 
     def dependent_varnames(self, dim_names=set()):
