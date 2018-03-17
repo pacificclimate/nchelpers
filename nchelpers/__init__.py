@@ -917,6 +917,8 @@ class CFDataset(Dataset):
                 non_dependent_var_names.add(variable.bounds)
             if hasattr(variable, 'climatology'):
                 non_dependent_var_names.add(variable.climatology)
+            if hasattr(variable, 'grid_mapping'):
+                non_dependent_var_names.add(variable.grid_mapping)
             if hasattr(variable, 'coordinates'):
                 non_dependent_var_names.update(variable.coordinates.split())
         return [name for name in var_names - non_dependent_var_names]
