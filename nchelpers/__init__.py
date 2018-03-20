@@ -1416,12 +1416,13 @@ class CFDataset(Dataset):
                     .format(**locals())
             )
 
-        def latitude_longitude(var):
+        def latitude_longitude(var, ellps=ellps):
             """
             Return PROJ.4 definition string for a latitude-longitude
             (spherical earth) projection.
             """
             parts = ["+proj=longlat"]
+            parts.append("+ellps={}".format(ellps))
 
             for template, attr_name in (
                     ('+a={}', 'semi_major_axis'),
