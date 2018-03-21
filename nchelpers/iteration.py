@@ -70,6 +70,13 @@ def chunks(array, chunk_shape):
     Generator that returns all chunks of shape ``chunk_shape`` in
     array ``array``.
 
+    NOTE: array[chunk_slice] yields a *view* on the original numpy array.
+    So it avoids copying data and instead gives you a new variable that is a
+    pointer to the original data in RAM. This is great for performance, but ...
+
+    WARNING: The chunk view also allows you to *modify* values. They are not
+    safe in some other context, but live values in the view.
+
     :param array: (numpy.array) array to be chunked
     :param chunk_shape: (tuple) shape of (full-size) chunk
     :return: (generator) that enumerates all chunks in array; a chunk
@@ -82,7 +89,8 @@ def chunks(array, chunk_shape):
 def opt_chunk_shape(shape, max_chunk_size):
     """
     Return an "optimal" chunk shape of size at most ``max_chunk_size`` for
-    an array of shape ``shape``.
+    an array of shape ``shape``, for some notion of "optimal". This could
+    easily be changed.
 
     :param shape: (tuple) array shape
     :param max_chunk_size: (int) maximum size (element count) of chunk

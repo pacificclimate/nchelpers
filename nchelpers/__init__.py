@@ -919,7 +919,7 @@ class CFDataset(Dataset):
             )
             return zip(midpoints[:-1], values, midpoints[1:])
 
-    def var_range(self, var_name, chunksize=1000000):
+    def var_range(self, var_name, chunksize=2**20):
         """Return minimum and maximum value taken by variable (over all
         dimensions).
 

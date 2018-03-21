@@ -22,10 +22,7 @@ def num_chunks(shape, chunk_shape):
 
 def union(sets):
     """Union of all sets in iterator ``sets``."""
-    result = set()
-    for s in sets:
-        result = result | s
-    return result
+    return { x for s in sets for x in s }
 
 
 def indices(slice, shape):
@@ -42,12 +39,6 @@ sc = [
     ((10, 10, 10), (3, 5, 7)),
 ]
 
-@pytest.mark.parametrize('shape, chunk_shape', sc)
-def test_print_chunk_indices(shape, chunk_shape):
-    print()
-    for index in chunk_corners(shape, chunk_shape):
-        print(index)
-
 
 @pytest.mark.parametrize('shape, chunk_shape', sc)
 def test_chunk_indices(shape, chunk_shape):
@@ -61,13 +52,6 @@ def test_chunk_indices(shape, chunk_shape):
 
 
 @pytest.mark.parametrize('shape, chunk_shape', sc)
-def test_print_chunk_slices(shape, chunk_shape):
-    print()
-    for chunk_slice in chunk_slices(shape, chunk_shape):
-        print(chunk_slice)
-
-
-@pytest.mark.parametrize('shape, chunk_shape', sc)
 def test_chunk_slices(shape, chunk_shape):
     slices = list(chunk_slices(shape, chunk_shape))
     # One slice per chunk
@@ -78,38 +62,29 @@ def test_chunk_slices(shape, chunk_shape):
            set(product(*(range(s) for s in shape)))
 
 
-@pytest.mark.parametrize('array, chunk_shape', [
-    (np.arange(size(shape)).reshape(shape), chunk_shape)
-    for shape, chunk_shape in sc
+@pytest.mark.parametrize('max_chunk_size', [
+    1,
+    2,
+    3,
+    5,
+    6,
+    7,
+    9,
+    10,
+    11,
+    20,
+    100,
+    101,
+    150,
+    1000,
+    1100,
+    1251,
+    200*10*5,
+    200*10*5 + 1,
+    200*10*5 * 100,
 ])
-def test_print_chunks(array, chunk_shape):
-    print()
-    for chunk in chunks(array, chunk_shape):
-        print(chunk)
-
-
-@pytest.mark.parametrize('shape, max_chunk_size', [
-    ((200, 10, 5), 1),
-    ((200, 10, 5), 2),
-    ((200, 10, 5), 3),
-    ((200, 10, 5), 5),
-    ((200, 10, 5), 6),
-    ((200, 10, 5), 7),
-    ((200, 10, 5), 9),
-    ((200, 10, 5), 10),
-    ((200, 10, 5), 11),
-    ((200, 10, 5), 20),
-    ((200, 10, 5), 100),
-    ((200, 10, 5), 101),
-    ((200, 10, 5), 150),
-    ((200, 10, 5), 1000),
-    ((200, 10, 5), 1100),
-    ((200, 10, 5), 1251),
-    ((200, 10, 5), 200*10*5),
-    ((200, 10, 5), 200*10*5 + 1),
-    ((200, 10, 5), 200*10*5 * 100),
-])
-def test_opt_chunk_shape(shape, max_chunk_size):
+def test_opt_chunk_shape(max_chunk_size):
+    shape = (200, 10, 5)
     ocs = opt_chunk_shape(shape, max_chunk_size)
     print("{}; {} -> {}; {}".format(shape, max_chunk_size, ocs, size(ocs)))
     assert len(ocs) == len(shape)
