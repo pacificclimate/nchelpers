@@ -24,6 +24,7 @@ setup(
         'data/tiny_mClim_gcm.nc',
         'data/tiny_sClim_gcm.nc',
         'data/tiny_aClim_gcm.nc',
+        'data/tiny_streamflow.nc',
     ]},
     include_package_data=True,
     classifiers=[
