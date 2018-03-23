@@ -1334,12 +1334,12 @@ class CFDataset(Dataset):
     ###########################################################################
     # Variables - for DSG files
 
-    def _check_dsg_sampling_geometry(self):
+    def _check_dsg_sampling_geometry(self, what):
         if self.sampling_geometry != 'dsg.timeSeries':
             raise CFValueError(
-                'Coordinate variables are defined only for files with '
+                'A(n) {} is defined only for files with '
                 'discrete sampling geometry. This file has a sampling'
-                'geometry type of {}'.format(self.sampling_geometry))
+                'geometry type of {}'.format(what, self.sampling_geometry))
 
     def coordinate_vars(self, var_name):
         """Return list of coordinate variables (instance variables) associated
@@ -1347,7 +1347,7 @@ class CFDataset(Dataset):
 
         Valid only for DSG files.
         """
-        self._check_dsg_sampling_geometry()
+        self._check_dsg_sampling_geometry('coordinate variable')
         variable = self.variables[var_name]
         return [self.variables[name] for name in variable.coordinates.split()]
 
@@ -1357,7 +1357,7 @@ class CFDataset(Dataset):
 
         Valid only for DSG files.
         """
-        self._check_dsg_sampling_geometry()
+        self._check_dsg_sampling_geometry('instance dimension')
         return self.dimensions[self.coordinate_vars(var_name)[0].dimensions[0]]
 
     def id_instance_var(self, var_name, cf_role='timeseries_id'):
@@ -1369,7 +1369,7 @@ class CFDataset(Dataset):
 
         Valid only for DSG files.
         """
-        self._check_dsg_sampling_geometry()
+        self._check_dsg_sampling_geometry('instance variable')
         try:
             return next(
                 c for c in self.coordinate_vars(var_name)
@@ -1389,6 +1389,7 @@ class CFDataset(Dataset):
 
         Valid only for DSG files.
         """
+        self._check_dsg_sampling_geometry('instance variable')
         axis_to_coord_names = {
             'X': ['lon', 'longitude'],
             'Y': ['lat', 'latitude'],
