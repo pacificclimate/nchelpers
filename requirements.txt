@@ -2,3 +2,4 @@ python-dateutil
 netCDF4
 cached-property
 pytest
+pycrs

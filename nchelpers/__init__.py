@@ -17,6 +17,7 @@ from dateutil.relativedelta import relativedelta
 import hashlib
 import re
 import collections
+import pycrs
 
 from cached_property import cached_property
 import numpy as np
@@ -1463,6 +1464,61 @@ class CFDataset(Dataset):
             raise CFValueError(
                 "'{}' is not a recognized value for grid_mapping_name"
             )
+
+    def wkt_string(self, var_name, default=None):
+        """
+        Return a WKT string for the specified variable. Checks to see if a
+        'crs_wkt' attribute is present on a grid_mapping variable. Failing
+        that, generates a proj4 string from descriptive attributes on the 
+        grid_mapping variable and converts it to WKT.
+
+        Accepts a default wkt string, which will be returned if the file 
+        lacks a grid_mapping variable, or if the file has one but the variable
+        has neither a WKT attribute nor the attributes needed to construct a
+        valid proj4 string.
+
+        :param var_name: (str) name of the variable
+        :param default: (str) default wkt string returned if one cannot be constructed
+        :returns (str): a WKT reference string
+        :raises
+            ``CFAttributeError`` if the main variable doesn't define an extant grid_mapping
+            ``CFValueError`` if the grid_mapping variable describes an incomplete or
+                malformed crs
+        """
+        try:
+            grid_mapping_var_name = getattr(
+                self.variables[var_name], 'grid_mapping')
+        except AttributeError:
+            if default is not None:
+                return default
+            raise CFAttributeError(
+                'No grid_mapping defined for variable {}'.format(var_name))
+
+        if not grid_mapping_var_name in self.variables:
+            raise CFValueError(
+                'grid_mapping attribute for variable {} is {}, but {} is missing from file'.format(var_name, grid_mapping_var_name, grid_mapping_var_name)
+                )
+
+        grid_mapping_var = self.variables[grid_mapping_var_name]
+
+        try: #see if WKT is included in the file
+            wkt_string = getattr_cf_error(grid_mapping_var, 'crs_wkt')
+            return wkt_string
+        except CFAttributeError: #See if proj4 can be generated
+            try:
+                proj4 = self.proj4_string(var_name)
+            except (CFAttributeError, CFValueError) as error: #proj4_string() exception
+                #missing or wrong values to construct proj4 string
+                if default is not None:
+                    return default
+                raise error
+            try:
+                return  pycrs.parser.from_proj4(proj4).to_ogc_wkt()
+            except Exception: #pyCRS exception
+                if default is not None:
+                    return default
+                raise CFValueError(
+                    'Coordinate reference system incompletely specified by {} variable'.format(grid_mapping_var_name))
 
     ###########################################################################
     # Standard file identifiers
