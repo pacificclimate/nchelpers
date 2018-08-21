@@ -13,7 +13,7 @@ setup(
     author="Rod Glover",
     author_email="rglover@uvic.ca",
     zip_safe=True,
-    install_requires=['netCDF4', 'cached-property', 'python-dateutil'],
+    install_requires=['netCDF4==1.3', 'cached-property', 'python-dateutil'],
     package_data={'nchelpers': [
         'data/CanESM2-rcp85-tasmax-r1i1p1-2010-2039.nc',
         'data/cgcm.nc',
