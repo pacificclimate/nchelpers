@@ -13,7 +13,7 @@ setup(
     author="Rod Glover",
     author_email="rglover@uvic.ca",
     zip_safe=True,
-    install_requires=['netCDF4', 'cached-property', 'python-dateutil'],
+    install_requires=['netCDF4==1.3', 'cached-property', 'python-dateutil'],
     package_data={'nchelpers': [
         'data/CanESM2-rcp85-tasmax-r1i1p1-2010-2039.nc',
         'data/cgcm.nc',
@@ -24,6 +24,7 @@ setup(
         'data/tiny_mClim_gcm.nc',
         'data/tiny_sClim_gcm.nc',
         'data/tiny_aClim_gcm.nc',
+        'data/tiny_streamflow.nc',
     ]},
     include_package_data=True,
     classifiers=[
