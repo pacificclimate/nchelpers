@@ -1,6 +1,14 @@
 News / Release Notes
 ====================
 
+5.4.0
+-----
+
+*Release Date: 21-Aug-2018*
+
+* [Support streamflow model output files; more generally, support discrete sampling
+  geometry (DSG) files](https://github.com/pacificclimate/nchelpers/issues/33)
+
 5.3.0
 -----
 
