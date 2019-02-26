@@ -613,7 +613,7 @@ class CFDataset(Dataset):
 
     @property
     def is_multi_year(self):
-        return is_multi_year_mean(self)
+        return self.is_multi_year_mean
 
     @property
     def is_multi_year_mean(self):
