@@ -79,6 +79,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('gcm', 'md5', '3eb812cca9366973b41078b0bf19fe3b'),
     ('gcm', 'climatology_bounds_var_name', None),
     ('gcm', 'sampling_geometry', 'gridded'),
+    ('gcm', 'is_multi_year', False),
     ('gcm', 'is_multi_year_mean', False),
     ('gcm', 'time_range', (5475.5, 9125.5)),
     ('gcm', 'time_step_size', time_to_seconds(1, 'days')),
@@ -104,6 +105,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('downscaled', 'md5', '6ebca934615ad7e6bd328bcc6fa9058b'),
     ('downscaled', 'climatology_bounds_var_name', None),
     ('downscaled', 'sampling_geometry', 'gridded'),
+    ('downscaled', 'is_multi_year', False),
     ('downscaled', 'is_multi_year_mean', False),
     ('downscaled', 'time_range', (715509.5, 727196.5)),
     ('downscaled', 'time_step_size', time_to_seconds(1, 'days')),
@@ -129,6 +131,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('hydromodel_gcm', 'md5', '36af1a6d4665fecf0d1a727a7cbdc6ef'),
     ('hydromodel_gcm', 'climatology_bounds_var_name', None),
     ('hydromodel_gcm', 'sampling_geometry', 'gridded'),
+    ('hydromodel_gcm', 'is_multi_year', False),
     ('hydromodel_gcm', 'is_multi_year_mean', False),
     ('hydromodel_gcm', 'time_range', (0.0, 4382.0)),
     ('hydromodel_gcm', 'time_step_size', time_to_seconds(1, 'days')),
@@ -148,11 +151,11 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('hydromodel_gcm', 'cmor_filename',
      'BASEFLOW+EVAP+GLAC_AREA_BAND+GLAC_MBAL_BAND+RUNOFF+SWE_BAND_day_VICGL+'
      'RGM+HydroCon_ACCESS1-0_historical+rcp45_r1i1p1_19840101-19951231.nc'),
-    ('hydromodel_gcm', 'unique_id', 
+    ('hydromodel_gcm', 'unique_id',
      'BASEFLOW-EVAP-GLAC_AREA_BAND-GLAC_MBAL_BAND-RUNOFF-SWE_BAND_day_VICGL-'
      'RGM-HydroCon_ACCESS1-0_historical-rcp45_r1i1p1_19840101-19951231'),
 
-    # Note: The following properties are not meaningful for a climatological 
+    # Note: The following properties are not meaningful for a climatological
     # output file and so are not tested:
     #   time_range
     #   time_step_size
@@ -160,6 +163,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('mClim_gcm', 'md5', '411cae3298be3ba38588fceba0992eb7'),
     ('mClim_gcm', 'climatology_bounds_var_name', 'climatology_bnds'),
     ('mClim_gcm', 'sampling_geometry', 'gridded'),
+    ('mClim_gcm', 'is_multi_year', True),
     ('mClim_gcm', 'is_multi_year_mean', True),
     ('mClim_gcm', 'time_resolution', 'monthly'),
     # actually so, though the term 'unprocessed' here is misleading
@@ -183,6 +187,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('sClim_gcm', 'md5', 'ecd2a0a28ffc12cc795d4e6b623543b6'),
     ('sClim_gcm', 'climatology_bounds_var_name', 'climatology_bnds'),
     ('sClim_gcm', 'sampling_geometry', 'gridded'),
+    ('sClim_gcm', 'is_multi_year', True),
     ('sClim_gcm', 'is_multi_year_mean', True),
     ('sClim_gcm', 'time_resolution', 'seasonal'),
     # actually so, though the term 'unprocessed' here is misleading
@@ -206,6 +211,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('aClim_gcm', 'md5', 'b002ec3839db4daffdad335ad0d31563'),
     ('aClim_gcm', 'climatology_bounds_var_name', 'climatology_bnds'),
     ('aClim_gcm', 'sampling_geometry', 'gridded'),
+    ('aClim_gcm', 'is_multi_year', True),
     ('aClim_gcm', 'is_multi_year_mean', True),
     ('aClim_gcm', 'time_resolution', 'yearly'),
     # actually so, though the term 'unprocessed' here is misleading
@@ -229,6 +235,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('climdex_ds_gcm', 'md5', '5cbe8412f19599f893ba28062e0d7a9b'),
     ('climdex_ds_gcm', 'climatology_bounds_var_name', None),
     ('climdex_ds_gcm', 'sampling_geometry', 'gridded'),
+    ('climdex_ds_gcm', 'is_multi_year', False),
     ('climdex_ds_gcm', 'is_multi_year_mean', False),
     ('climdex_ds_gcm', 'time_range', (182.0, 54969.0)),
     ('climdex_ds_gcm', 'time_step_size', time_to_seconds(365, 'days')),
@@ -255,6 +262,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('gridded_obs', 'md5', '6e4b0f8968a18ffa917e34b68a3e5636'),
     ('gridded_obs', 'climatology_bounds_var_name', None),
     ('gridded_obs', 'sampling_geometry', 'gridded'),
+    ('gridded_obs', 'is_multi_year', False),
     ('gridded_obs', 'is_multi_year_mean', False),
     ('gridded_obs', 'time_range', (0.0, 3.0)),
     ('gridded_obs', 'time_step_size', time_to_seconds(1, 'days')),
@@ -278,6 +286,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('streamflow', 'md5', 'e399c143415d13b7eab6809daa9cfc2f'),
     ('streamflow', 'climatology_bounds_var_name', None),
     ('streamflow', 'sampling_geometry', 'dsg.timeSeries'),
+    ('streamflow', 'is_multi_year', False),
     ('streamflow', 'is_multi_year_mean', False),
     ('streamflow', 'time_range', (710034.5, 710049.5)),
     ('streamflow', 'time_step_size', time_to_seconds(1, 'days')),
@@ -311,7 +320,7 @@ def test_simple_property(tiny_dataset, prop, expected):
 # These cases are shared between the two methods, so each case includes
 # expected output for both.
 # Each test function ignores the other's expected output parameter.
-# Each tuple correspnods to the following arguments: 
+# Each tuple correspnods to the following arguments:
 #   ``(file_spec, strict,
 #      expected_climatology_bounds_var_name, expected_is_multi_year_mean)``
 #
@@ -487,6 +496,53 @@ def test_climatology_bounds_var_name(fake_nc_dataset, strict, var_name, _):
     ,
     indirect=['fake_nc_dataset']
 )
+def test_is_multi_year(fake_nc_dataset, strict, _, is_mym):
+    cf = CFDataset(fake_nc_dataset, strict_metadata=strict)
+    assert cf.is_multi_year == is_mym
+
+
+# Test against some actual files (from climate-explorer-backend tests).
+# This is a supplement to the much more thorough but contrived tests with the
+# faked nc datasets above.
+@mark.parametrize('dataset, is_mym', [
+    ('CanESM2-rcp85-tasmax-r1i1p1-2010-2039', True),
+    ('prism_pr_small', True),
+], indirect=['dataset'])
+def test_is_multi_year_against_nonstandard_datasets(dataset, is_mym):
+    assert dataset.is_multi_year == is_mym
+
+
+@mark.parametrize(
+    'fake_nc_dataset, strict, _, is_mym',
+    # All the cases depending on climo bounds
+    climo_bounds_var_test_cases +
+
+    # Without time:climatology or time:bounds attrs; without variable with likely name for climo bounds;
+    # without variable with likely name for time bounds and likely contents;
+    # with time variable with suspicious length and contents
+    [
+        # Non-strict
+        (spec(tb_attr=None, tb_var_name=None,
+              tb_values=None, t_values=t_values),
+         False, None, True)
+        for t_values in suspicious_time_values
+    ] +
+    [
+        # Strict
+        (spec(tb_attr=None, tb_var_name=None,
+              tb_values=None, t_values=t_values), True, None, False)
+        for t_values in suspicious_time_values
+    ] +
+    [
+        (spec(tb_attr=None, tb_var_name=None,
+              tb_values=None, t_values=t_values), strict,
+         None, False)
+        for t_values in non_suspicious_time_values
+        for strict in [False, True]
+    ]
+    ,
+    indirect=['fake_nc_dataset']
+)
 def test_is_multi_year_mean(fake_nc_dataset, strict, _, is_mym):
     cf = CFDataset(fake_nc_dataset, strict_metadata=strict)
     assert cf.is_multi_year_mean == is_mym
@@ -589,7 +645,7 @@ def test_gcm_simple_property(tiny_dataset, prop, expected):
     ('gcm', 'experiment', 'historical'),
     ('gcm', 'run', 'r1i1p1'),
     ('gcm', 'ensemble_member', 'r1i1p1'),
-    
+
     ('downscaled', 'project', 'CMIP5'),
     ('downscaled', 'institution', 'PCIC'),
     ('downscaled', 'model', 'ACCESS1-0'),
