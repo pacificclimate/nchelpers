@@ -119,7 +119,7 @@ def cmor_type_filename(extension='', **component_values):
         geo_info
     '''.split()
     # ... if they are defined in component_values
-    return '_'.join(component_values[cname] for cname in component_names 
+    return '_'.join(component_values[cname] for cname in component_names
                     if component_values.get(cname, None) is not None) \
            + extension
 
@@ -610,6 +610,10 @@ class CFDataset(Dataset):
         except AttributeError:
             # TODO: Check more carefully for gridded datasets?
             return 'gridded'
+
+    @property
+    def is_multi_year(self):
+        return is_multi_year_mean(self)
 
     @property
     def is_multi_year_mean(self):
@@ -1532,7 +1536,7 @@ class CFDataset(Dataset):
             lon_0 = getattr_cf_error(var, 'longitude_of_central_meridian')
             x_0 = getattr_cf_error(var, 'false_easting')
             y_0 = getattr_cf_error(var, 'false_northing')
-            
+
             return (
                 '+proj=lcc +ellps={ellps} '
                 '+lat_0={lat_0} +lat_1={lat_1} +lat_2={lat_2} '
@@ -1550,7 +1554,7 @@ class CFDataset(Dataset):
             k_0 = getattr_cf_error(var, 'scale_factor_at_central_meridian')
             x_0 = getattr_cf_error(var, 'false_easting')
             y_0 = getattr_cf_error(var, 'false_northing')
-            
+
             return (
                 '+proj=tmerc +ellps={ellps} '
                 '+lat_0={lat_0} +lon_0={lon_0} '
