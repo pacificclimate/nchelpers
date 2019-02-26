@@ -1,6 +1,12 @@
 News / Release Notes
 ====================
 
+5.5.1
+-----
+
+*Release Date: 26-Feb-2019*
+* Add property `AutoGcmPrefixedAttribute.is_multi_year` to generalize the `is_multi_year_mean`
+
 5.5.0
 -----
 

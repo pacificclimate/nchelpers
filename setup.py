@@ -1,6 +1,6 @@
 from setuptools import setup
 
-__version__ = (5, 5, 0)
+__version__ = (5, 5, 1)
 
 setup(
     name="nchelpers",
