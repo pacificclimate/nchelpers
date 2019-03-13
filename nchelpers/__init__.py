@@ -1642,27 +1642,27 @@ class CFDataset(Dataset):
             )
         }
 
+        if self.is_multi_year:
+            components.update(
+                frequency=self.frequency
+            )
+        else:
+            # Regarding how the 'mip_table' component is defined here,
+            # see the discussion in section titled "MIP table / table_id" in
+            # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data
+            # Specifically, we do not consult the value of the attribute
+            # ``table_id`` because it is too limited for our needs. Instead we
+            # map the file's time resolution to a value.
+            components.update(
+                mip_table=tres_to_mip_table and
+                          tres_to_mip_table.get(self.time_resolution, None)
+            )
+
         if self.is_gcm_derivative:
 
             components.update(ensemble_member=self.ensemble_member)
 
             # Components depending on the type of file
-            if self.is_multi_year_mean:
-                components.update(
-                    frequency=self.frequency
-                )
-            else:
-                # Regarding how the 'mip_table' component is defined here,
-                # see the discussion in section titled "MIP table / table_id" in
-                # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data
-                # Specifically, we do not consult the value of the attribute
-                # ``table_id`` because it is too limited for our needs. Instead we
-                # map the file's time resolution to a value.
-                components.update(
-                    mip_table=tres_to_mip_table and
-                              tres_to_mip_table.get(self.time_resolution, None)
-                )
-
             if self.is_unprocessed_gcm_output:
                 components.update(
                     model=self.metadata.model,
@@ -1704,28 +1704,17 @@ class CFDataset(Dataset):
 
         elif self.is_other:
 
-            if self.is_multi_year:
-                components.update(
-                    frequency=self.frequency
-                )
-            else:
-                # See comment above for explanation of 'mip_table' component
-                components.update(
-                    mip_table=tres_to_mip_table and
-                              tres_to_mip_table.get(self.time_resolution, None)
-                )
-
-            if self.is_downscaled_gridded_obs:
-                components.update(
-                    downscaling_method=self.method_id
-                )
-
             # CAUTION: Temporary solution to a bigger problem here
             components.update(
                 model=self.metadata.model,
                 experiment=self.metadata.experiment,
                 geo_info=getattr(self, 'domain', None)
             )
+
+            if self.is_downscaled_gridded_obs:
+                components.update(
+                    downscaling_method=self.method_id
+                )
 
         # Override with supplied args
         components.update(**override)
