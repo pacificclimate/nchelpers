@@ -782,6 +782,11 @@ class CFDataset(Dataset):
         """True iff the content of the file is gridded observations"""
         return self.is_other and self.product == 'gridded observations'
 
+    @property
+    def is_downscaled_gridded_obs(self):
+        """True iff the content of the file is downscaled gridded observations"""
+        return self.is_other and self.product == 'downscaled gridded observations'
+
     ###########################################################################
     # Dimensions and axes (gridded datasets)
 
@@ -1699,15 +1704,31 @@ class CFDataset(Dataset):
 
         elif self.is_other:
 
-            # CAUTION: Temporary solution to a bigger problem here
+            if self.is_multi_year:
+                components.update(
+                    frequency=self.frequency
+                )
+            else:
+                # See comment above for explanation of 'mip_table' component
+                components.update(
+                    mip_table=tres_to_mip_table and
+                              tres_to_mip_table.get(self.time_resolution, None)
+                )
 
-            components.update(
-                mip_table=tres_to_mip_table and
-                          tres_to_mip_table.get(self.time_resolution, None),
-                model=self.metadata.model,
-                experiment=self.metadata.experiment,
-                geo_info=getattr(self, 'domain', None)
-            )
+            if self.is_downscaled_gridded_obs:
+                components.update(
+                    downscaling_method=self.method_id,
+                    model=self.metadata.model,
+                    experiment=self.metadata.experiment,
+                    geo_info=getattr(self, 'domain', None)
+                )
+            else:
+                # CAUTION: Temporary solution to a bigger problem here
+                components.update(
+                    model=self.metadata.model,
+                    experiment=self.metadata.experiment,
+                    geo_info=getattr(self, 'domain', None)
+                )
 
         # Override with supplied args
         components.update(**override)
