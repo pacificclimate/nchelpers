@@ -1717,18 +1717,15 @@ class CFDataset(Dataset):
 
             if self.is_downscaled_gridded_obs:
                 components.update(
-                    downscaling_method=self.method_id,
-                    model=self.metadata.model,
-                    experiment=self.metadata.experiment,
-                    geo_info=getattr(self, 'domain', None)
+                    downscaling_method=self.method_id
                 )
-            else:
-                # CAUTION: Temporary solution to a bigger problem here
-                components.update(
-                    model=self.metadata.model,
-                    experiment=self.metadata.experiment,
-                    geo_info=getattr(self, 'domain', None)
-                )
+
+            # CAUTION: Temporary solution to a bigger problem here
+            components.update(
+                model=self.metadata.model,
+                experiment=self.metadata.experiment,
+                geo_info=getattr(self, 'domain', None)
+            )
 
         # Override with supplied args
         components.update(**override)
