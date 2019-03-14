@@ -782,10 +782,6 @@ class CFDataset(Dataset):
         """True iff the content of the file is gridded observations"""
         return self.is_other and self.product == 'gridded observations'
 
-    @property
-    def is_downscaled_gridded_obs(self):
-        """True iff the content of the file is downscaled gridded observations"""
-        return self.is_other and self.product == 'downscaled gridded observations'
 
     ###########################################################################
     # Dimensions and axes (gridded datasets)
@@ -1701,14 +1697,6 @@ class CFDataset(Dataset):
                     experiment=_replace_commas(self.gcm.experiment_id),
                     geo_info=getattr(self, 'domain', None)
                 )
-
-        elif self.is_downscaled_gridded_obs:
-            components.update(
-                downscaling_method=self.method_id,
-                model=self.metadata.model,
-                experiment=self.metadata.experiment,
-                geo_info=getattr(self, 'domain', None)
-            )
 
         elif self.is_other:
             # CAUTION: Temporary solution to a bigger problem here
