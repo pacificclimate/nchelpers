@@ -1,6 +1,13 @@
 News / Release Notes
 ====================
 
+
+5.5.2
+-----
+
+*Release Date: 22-Mar-2019*
+* [Extend `_cmor_type_filename_components(...)` method to support downscaled gridded observations](https://github.com/pacificclimate/nchelpers/issues/59)
+
 5.5.1
 -----
 
