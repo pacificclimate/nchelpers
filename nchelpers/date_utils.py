@@ -22,6 +22,8 @@ def time_scale(time_var):
 def resolution_standard_name(seconds):
     """Return a standard descriptive string given a time resolution in seconds.
     """
+    if seconds is None:
+        return "invariant"
     for m in [1, 2, 5, 15, 30]:
         if seconds == time_to_seconds(m, 'minutes'):
             return '{}-minute'.format(m)
