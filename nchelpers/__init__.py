@@ -68,6 +68,8 @@ standard_tres_to_mip_table = {
     'daily': 'day',  # MIP table and frequency standard
     'monthly': 'mon',  # frequency std
     'yearly': 'yr',  # frequency std
+    'fx': 'fx', # time-independent data
+    'fixed': 'fx'
 }
 
 
@@ -612,6 +614,21 @@ class CFDataset(Dataset):
             return 'gridded'
 
     @property
+    def is_time_invariant(self):
+        """Return True if the metadata indicates that this datafile consists
+        of time-independent data, such as elevation or soil data. In order to
+        qualify, a dataset must lack a time dimension AND have the metadata
+        frequency value of "fx" ("fixed").
+        Reasoning: mere lack of a time dimension could plausibly be an error,
+        but the frequency attribute indicates positive intent to create a
+        time-independent dataset."""
+        try:
+            self.time_var
+            return False # this dataset has a time dimensions
+        except CFValueError:
+            return self.frequency == "fx"
+
+    @property
     def is_multi_year(self):
         return self.is_multi_year_mean
 
@@ -1033,7 +1050,18 @@ class CFDataset(Dataset):
 
     ###########################################################################
     # Variables - time
-
+    # It is up to the caller of nchelpers functions to check is_time_invariant
+    # and to not call time-related accessor functions on a dataset with no time
+    # axis. The following accessors will throw a CFValueError "No axis is
+    # attributed with time information" when called on a time-invariant dataset:
+    # * time_var
+    # * time_var_values
+    # * time_steps
+    # * time_step_size
+    # * time_range
+    # * time_range_as_dates
+    # 
+    # time_resolution returns a resolution of "fixed" for time-invariant datasets.
     @property
     def time_var(self):
         """The time variable (netCDF4.Variable) in this file"""
@@ -1086,6 +1114,8 @@ class CFDataset(Dataset):
                 13: 'monthly,yearly',
                 17: 'monthly,seasonal,yearly',
             }.get(self.time_var.size, 'other')
+        if self.is_time_invariant:
+            return "fixed"
         return resolution_standard_name(self.time_step_size)
 
     @cached_property
@@ -1626,9 +1656,10 @@ class CFDataset(Dataset):
         """
 
         # File content-independent components
-        components = {
-            'variable': '+'.join(sorted(self.dependent_varnames())),
-            'time_range': _cmor_formatted_time_range(
+        components = { 'variable': '+'.join(sorted(self.dependent_varnames()))}
+
+        if not self.is_time_invariant:
+            components["time_range"] = _cmor_formatted_time_range(
                 *to_datetime(
                     num2date(
                         self.nominal_time_span,
@@ -1636,7 +1667,6 @@ class CFDataset(Dataset):
                     )
                 )
             )
-        }
 
         if self.is_multi_year:
             components.update(
