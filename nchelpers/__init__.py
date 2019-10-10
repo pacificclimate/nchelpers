@@ -68,7 +68,8 @@ standard_tres_to_mip_table = {
     'daily': 'day',  # MIP table and frequency standard
     'monthly': 'mon',  # frequency std
     'yearly': 'yr',  # frequency std
-    'fx': 'fx' # time-independent data
+    'fx': 'fx', # time-independent data
+    'fixed': 'fx'
 }
 
 
@@ -1048,9 +1049,18 @@ class CFDataset(Dataset):
 
     ###########################################################################
     # Variables - time
-    # These functions will throw an error if used on netCDF files with no time
-    # axis. Whether a file has a time axis can be checked with is_time_invariant.
-
+    # It is up to the caller of nchelpers functions to check is_time_invariant
+    # and to not call time-related accessor functions on a dataset with no time
+    # axis. The following accessors will throw a CFValueError "No axis is
+    # attributed with time information" when called on a time-invariant dataset:
+    # * time_var
+    # * time_var_values
+    # * time_steps
+    # * time_step_size
+    # * time_range
+    # * time_range_as_dates
+    # 
+    # time_resolution returns a resolution of "fixed" for time-invariant datasets.
     @property
     def time_var(self):
         """The time variable (netCDF4.Variable) in this file"""
@@ -1104,7 +1114,7 @@ class CFDataset(Dataset):
                 17: 'monthly,seasonal,yearly',
             }.get(self.time_var.size, 'other')
         if self.is_time_invariant:
-            return "invariant"
+            return "fixed"
         return resolution_standard_name(self.time_step_size)
 
     @cached_property
