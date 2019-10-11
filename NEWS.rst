@@ -1,17 +1,25 @@
 News / Release Notes
 ====================
 
+5.5.3
+-----
+*Release Date: 11-Oct-2019*
+
+* Add support for time-invariant datasets
+* Add README
 
 5.5.2
 -----
 
 *Release Date: 22-Mar-2019*
+
 * [Extend `_cmor_type_filename_components(...)` method to support downscaled gridded observations](https://github.com/pacificclimate/nchelpers/issues/59)
 
 5.5.1
 -----
 
 *Release Date: 26-Feb-2019*
+
 * Add property `AutoGcmPrefixedAttribute.is_multi_year` to generalize the `is_multi_year_mean`
 
 5.5.0
