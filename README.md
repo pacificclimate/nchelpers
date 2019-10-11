@@ -6,7 +6,7 @@ and the PCIC metadata conventions that extend them.
 
 It supports several PCIC tools that work with netCDF files that adhere to the 
 CF and PCIC metadata conventions. The class provides several properties that
-specify information abotu a file's contents and metadata and can be used to
+specify information about a file's contents and metadata and can be used to
 guide data processing.It does not provide any new tools to directly
 modify netCDF files, but all file-modifying procedures in the netcdf4.Dataset
 class are still available.
@@ -16,7 +16,7 @@ class are still available.
 on chunk at a time so that enormous files can be read without a `MemoryError`.
 
 ## PCIC Metadata Model
-PCIC has a process-oriented metadata model.
+PCIC has a [process-oriented metadata model](https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data).
 
 Data originates as either model output (simulated by a Global Climate Model
 or Regional Climate Model) or observations (measured directly in some fashion).
@@ -173,4 +173,10 @@ pip install -r requirements.txt -i https://pypi.pacificclimate.org/simple/
 pip install .
 ```
 
-Tests can be run by typing `pytest`.
+Tests can be run with `pytest`.
+
+#### A Note on the PDP
+The PDP's metadata database has not been updated to support discrete structured
+geometry netCDFs. When indexing data for the PDP, you may need to use an older
+version of this library. For more information,
+[see this Confluence page](https://pcic.uvic.ca/confluence/display/CSG/Preparing+Datasets+For+The+PDP).
