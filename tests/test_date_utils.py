@@ -90,7 +90,3 @@ def test_to_datetime_360(jday_360, month, day):
     ])
 def test_truncate_to_resolution(date, resolution, expected):
     assert(truncate_to_resolution(date, resolution)) == expected
-    
-    
-    
-    

@@ -1158,7 +1158,6 @@ def test_proj4_string_raises(fake_nc_dataset, exception, exception_check):
     ('hydromodel_gcm', set()),
     ('seasonal', {'2080'})
     # Not relevant for climo data sets
-    # Probably not relevant for CLIMDEX data sets
 ], indirect=['tiny_dataset'])
 def test_climo_periods(tiny_dataset, expected):
     assert set(tiny_dataset.climo_periods.keys()) == expected

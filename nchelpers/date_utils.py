@@ -158,7 +158,7 @@ def truncate_to_resolution(date, resolution):
     datetime in the same resolution-sized chunk as the input date.
     Useful for checking whether two timestamps are the same month,
     season, etc.
-    Seasonal truncation behaves unintuitively: January and February
+    With seasonal resolution, January and February
     dates will be truncated to December 1 of the *previous* year,
     reflecting that winter crosses the year boundary."""
     if 'minute' in resolution:

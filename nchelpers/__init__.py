@@ -26,7 +26,7 @@ from netCDF4 import Dataset, Variable, num2date, date2num
 from nchelpers.date_utils import \
     time_scale, resolution_standard_name, \
     time_to_seconds, seconds_to_time, \
-    d2ss, to_datetime
+    d2ss, to_datetime, truncate_to_resolution
 from nchelpers.decorators import prevent_infinite_recursion
 from nchelpers.exceptions import CFAttributeError, CFValueError
 from nchelpers.iteration import opt_chunk_shape, chunks
@@ -1769,6 +1769,21 @@ class CFDataset(Dataset):
         """List of the standard climatological periods (see function
         ``standard_climo_periods``) that are a subset of the date range in
         the file."""
+
+        def final_climatology_interval(e):
+            """Returns the first day of the final interval (individual month,
+            season, etc) needed for this climatology.
+            To verify that data is present to calculate the climatology,
+            a timestamp during or after this interval is needed (>= the date
+            returned by this function).
+            Seasonal datasets require special handling, as their climatologies end
+            in autumn, not winter, so they don't go through to the end of the year."""
+            if self.time_resolution == 'seasonal' and e.month == 12:
+                return truncate_to_resolution(e - relativedelta(months=1),
+                                              self.time_resolution)
+            else:
+                return truncate_to_resolution(e, self.time_resolution)
+
         time_var = self.time_var
         s_time, e_time = self.time_range
         units = time_var.units
@@ -1777,6 +1792,6 @@ class CFDataset(Dataset):
             k: (climo_start_date, climo_end_date)
             for k, (climo_start_date, climo_end_date)
             in standard_climo_periods(calendar).items()
-            if s_time < date2num(climo_start_date, units, calendar) and
-            date2num(climo_end_date, units, calendar) < e_time
+            if s_time <= date2num(climo_start_date, units, calendar) and
+            date2num(final_climatology_interval(climo_end_date), units, calendar) <= e_time
         }
