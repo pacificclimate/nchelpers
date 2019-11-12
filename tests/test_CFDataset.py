@@ -1156,6 +1156,7 @@ def test_proj4_string_raises(fake_nc_dataset, exception, exception_check):
     ('gcm', set()),
     ('downscaled', {'6190'}),
     ('hydromodel_gcm', set()),
+    ('seasonal', {'2080'})
     # Not relevant for climo data sets
     # Probably not relevant for CLIMDEX data sets
 ], indirect=['tiny_dataset'])
