@@ -7,7 +7,8 @@ from netCDF4 import num2date
 from nchelpers.date_utils import \
     resolution_standard_name, \
     jday_360_to_remapped_month_day, \
-    to_datetime
+    to_datetime, \
+    truncate_to_resolution
 
 
 @mark.parametrize('arg, result', [
@@ -76,3 +77,20 @@ def test_to_datetime_360(jday_360, month, day):
     assert \
         to_datetime(num2date(jday_360, 'days since 1999-12-30', '360_day')) == \
         datetime(2000, month, day)
+
+@mark.parametrize('date, resolution, expected', [
+    (datetime(2000, 2, 1, 13, 35), "yearly", datetime(2000, 1, 1)),
+    (datetime(2000, 2, 1, 13, 35), "monthly", datetime(2000, 2, 1)),
+    (datetime(2000, 2, 1, 13, 35), "seasonal", datetime(1999, 12, 1)),
+    (datetime(2000, 2, 1, 13, 35), "30-minute", datetime(2000, 2, 1, 13, 30)),
+    (datetime(2000, 2, 1, 13, 35), "2-minute", datetime(2000, 2, 1, 13, 34)),
+    (datetime(2000, 2, 1, 13, 35), "6-hourly", datetime(2000, 2, 1, 12)),
+    (datetime(2000, 2, 1, 13, 35), "1-hourly", datetime(2000, 2, 1, 13)),
+    (datetime(2012, 5, 1), "seasonal", datetime(2012, 3, 1))
+    ])
+def test_truncate_to_resolution(date, resolution, expected):
+    assert(truncate_to_resolution(date, resolution)) == expected
+    
+    
+    
+    
