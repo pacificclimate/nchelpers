@@ -153,3 +153,35 @@ def d2ss(date):
         d=str(date.day).zfill(2)
     )
 
+def truncate_to_resolution(date, resolution):
+    """Given a datetime and a resolution, returns the earliest
+    datetime in the same resolution-sized chunk as the input date.
+    Useful for checking whether two timestamps are the same month,
+    season, etc.
+    With seasonal resolution, January and February
+    dates will be truncated to December 1 of the *previous* year,
+    reflecting that winter crosses the year boundary."""
+    if 'minute' in resolution:
+        n = re.match('^(\d+)-minute$',resolution)
+        if n and int(n.group(1)) in [1, 2, 5, 15, 30]:
+            return datetime(date.year, date.month, date.day, date.hour,
+                            date.minute - (date.minute % int(n.group(1))))
+    elif 'hourly' in resolution:
+        n = re.match('^(\d+)-hourly$',resolution)
+        if n and int(n.group(1)) in [1, 3, 6, 12]:
+            return datetime(date.year, date.month, date.day,
+                            date.hour - (date.hour % int(n.group(1))))
+    elif resolution == 'daily':
+        return datetime(date.year, date.month, date.day)
+    elif resolution == 'monthly':
+        return datetime(date.year, date.month, 1)
+    elif resolution == 'seasonal':
+        if date.month <= 2:  # winter began in the previous year.
+            return datetime(date.year - 1, 12, 1)
+        else:
+            return datetime(date.year, date.month - (date.month % 3), 1)
+    elif resolution == 'yearly':
+        return datetime(date.year, 1, 1)
+    #unrecognized resolution.
+    raise ValueError("Unsupported time resolution: {}".format(resolution))
+
