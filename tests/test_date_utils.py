@@ -80,9 +80,15 @@ def test_to_datetime_360(jday_360, month, day):
 
 @mark.parametrize('date, resolution, expected', [
     (datetime(2000, 2, 1, 13, 35), "yearly", datetime(2000, 1, 1)),
+    (datetime(1980, 1, 1, 0, 0), "yearly", datetime(1980, 1, 1)),
+    (datetime(2070, 12, 31, 17, 0), "yearly", datetime(2070, 1, 1)),
     (datetime(2000, 2, 1, 13, 35), "monthly", datetime(2000, 2, 1)),
+    (datetime(1942, 12, 3, 13, 35), "monthly", datetime(1942, 12, 1)),
+    (datetime(2000, 2, 7, 13, 35), "monthly", datetime(2000, 2, 1)),
     (datetime(2000, 2, 1, 13, 35), "seasonal", datetime(1999, 12, 1)),
+    (datetime(2000, 7, 15, 10, 12), "seasonal", datetime(2000, 6, 1)),
     (datetime(2000, 2, 1, 13, 35), "30-minute", datetime(2000, 2, 1, 13, 30)),
+    (datetime(2000, 2, 13), "30-minute", datetime(2000, 2, 13)),
     (datetime(2000, 2, 1, 13, 35), "2-minute", datetime(2000, 2, 1, 13, 34)),
     (datetime(2000, 2, 1, 13, 35), "6-hourly", datetime(2000, 2, 1, 12)),
     (datetime(2000, 2, 1, 13, 35), "1-hourly", datetime(2000, 2, 1, 13)),

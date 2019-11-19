@@ -1770,15 +1770,20 @@ class CFDataset(Dataset):
         ``standard_climo_periods``) that are a subset of the date range in
         the file."""
 
-        def final_climatology_interval(e):
+        def last_required_climo_timestamp(e):
             """Returns the first day of the final interval (individual month,
             season, etc) needed for this climatology.
             To verify that data is present to calculate the climatology,
             a timestamp during or after this interval is needed (>= the date
-            returned by this function).
-            Seasonal datasets require special handling, as their climatologies end
-            in autumn, not winter, so they don't go through to the end of the year."""
+            returned by this function)."""
             if self.time_resolution == 'seasonal' and e.month == 12:
+                # PCIC's definition of a "seasonal" climatology that runs from
+                # year N to year M includes the winter spanning years N-1 to N,
+                # but not the winter spanning years M to M+1.
+                # Therefore, even though December of the final year M
+                # falls within the span of years N-M designated by the climatology
+                # interval, we don't require data for this month.
+                # The final required timestamp is Autumn of year M.
                 return truncate_to_resolution(e - relativedelta(months=1),
                                               self.time_resolution)
             else:
@@ -1793,5 +1798,5 @@ class CFDataset(Dataset):
             for k, (climo_start_date, climo_end_date)
             in standard_climo_periods(calendar).items()
             if s_time <= date2num(climo_start_date, units, calendar) and
-            date2num(final_climatology_interval(climo_end_date), units, calendar) <= e_time
+            date2num(last_required_climo_timestamp(climo_end_date), units, calendar) <= e_time
         }
