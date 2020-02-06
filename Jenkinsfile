@@ -9,20 +9,22 @@ node {
     stage('Testing') {
         def requirements = ['requirements.txt']
         def pytestArgs = '-v tests'
-        def options =  [aptPackages: ['libhdf5-serial-dev', 'libnetcdf-dev']]
+        def options = [
+            aptPackages: ['libhdf5-serial-dev', 'libnetcdf-dev', 'git']
+        ]
 
         parallel "Python 3.6": {
-            runPythonTestSuite('crmprtd-python36', requirements, pytestArgs)
+            runPythonTestSuite('python:3.6', requirements, pytestArgs)
         },
         "Python 3.7": {
-            runPythonTestSuite('crmprtd-python37', requirements, pytestArgs,
+            runPythonTestSuite('python:3.7', requirements, pytestArgs,
                                options)
         }
     }
 
     if (isPypiPublishable()) {
         stage('Push to PYPI') {
-            publishPythonPackage('crmprtd-python36', 'PCIC_PYPI_CREDS')
+            publishPythonPackage('python:3.6', 'PCIC_PYPI_CREDS')
         }
     }
 
