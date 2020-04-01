@@ -1,6 +1,14 @@
 News / Release Notes
 ====================
 
+5.5.4
+-----
+*Release Date: 1-Apr-2020*
+
+* Correctly determine climatology interval coverage when a dataset ends on the last timestamp of the climtology
+* Discontinue CI testing for Python <3.6
+* Add Jenkinsfile for automatic testing and building
+
 5.5.3
 -----
 *Release Date: 11-Oct-2019*
