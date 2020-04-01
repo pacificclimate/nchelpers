@@ -24,7 +24,7 @@ node {
 
     if (isPypiPublishable()) {
         stage('Push to PYPI') {
-            publishPythonPackage('python:3.6', 'PCIC_PYPI_CREDS')
+            publishPythonPackage('pcic/crmprtd-test-env:python-3.6', 'PCIC_PYPI_CREDS')
         }
     }
 
