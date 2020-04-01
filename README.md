@@ -7,7 +7,7 @@ and the PCIC metadata conventions that extend them.
 It supports several PCIC tools that work with netCDF files that adhere to the 
 CF and PCIC metadata conventions. The class provides several properties that
 specify information about a file's contents and metadata and can be used to
-guide data processing.It does not provide any new tools to directly
+guide data processing. It does not provide any new tools to directly
 modify netCDF files, but all file-modifying procedures in the netcdf4.Dataset
 class are still available.
 
