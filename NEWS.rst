@@ -1,6 +1,12 @@
 News / Release Notes
 ====================
 
+5.5.5
+-----
+*Release Date: 1-Apr-2020*
+
+* Fix a bug in the Jenkinsfile pypi upload process
+
 5.5.4
 -----
 *Release Date: 1-Apr-2020*
