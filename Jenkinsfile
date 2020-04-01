@@ -22,6 +22,14 @@ node {
         }
     }
 
+    stage('Clean Workspace') {
+        cleanWs()
+    }
+
+    stage('Code Collection') {
+        collectCode()
+    }
+
     if (isPypiPublishable()) {
         stage('Push to PYPI') {
             publishPythonPackage('pcic/crmprtd-test-env:python-3.6', 'PCIC_PYPI_CREDS')
