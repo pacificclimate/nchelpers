@@ -1,6 +1,12 @@
 News / Release Notes
 ====================
 
+5.5.7
+-----
+*Release Date: 3-Jul-2020*
+
+* Upgrades the netCDF4-python requirement to 1.5
+
 5.5.6
 -----
 *Release Date: 3-Apr-2020*
