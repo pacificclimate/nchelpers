@@ -262,6 +262,7 @@ class CFDataset(Dataset):
         both strict and non-strict behaviours.
         """
         super(CFDataset, self).__init__(*args, **kwargs)
+        self.set_auto_mask(False)
         # Store options directly via dict to prevent them being treated as
         # Dataset attributes.
         # It's possible that it would be better to define ``__setattribute__``
