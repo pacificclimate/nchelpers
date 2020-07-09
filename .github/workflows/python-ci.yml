@@ -1,0 +1,33 @@
+name: Python CI
+
+on: push
+
+jobs:
+  test:
+
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      env:
+        PIP_INDEX_URL: https://pypi.pacificclimate.org/simple
+      run: |
+        sudo apt-get install libhdf5-serial-dev libnetcdf-dev
+        pip install -r requirements.txt
+        pip install .
+    - name: Test with pytest (full)
+      if: github.ref == 'refs/heads/master'
+      run: |
+        py.test -v tests
+    - name: Test with pytest (fast)
+      if: github.ref != 'refs/heads/master'
+      run: |
+        py.test -m "not slow" -v tests
