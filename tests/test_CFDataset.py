@@ -736,6 +736,7 @@ def test_get_var_bounds_and_values(tiny_dataset, var_name):
         assert value == var[i]
 
 
+@mark.slow
 @mark.parametrize('tiny_dataset, var_name, expected', [
     ('gcm', 'time', (5475.5, 9125.5)),
     ('gcm', 'lon', (264.375, 272.8125)),
