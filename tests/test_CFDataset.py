@@ -99,8 +99,6 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('gcm', 'ensemble_member', 'r1i1p1'),
     ('gcm', 'cmor_filename',
      'tasmax_day_BNU-ESM_historical_r1i1p1_19650101-19750101.nc'),
-    ('gcm', 'unique_id',
-     'tasmax_day_BNU-ESM_historical_r1i1p1_19650101-19750101'),
 
     ('downscaled', 'first_MiB_md5sum', '6ebca934615ad7e6bd328bcc6fa9058b'),
     ('downscaled', 'md5', '6ebca934615ad7e6bd328bcc6fa9058b'),
@@ -126,8 +124,6 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('downscaled', 'ensemble_member', 'r1i1p1'),
     ('downscaled', 'cmor_filename',
      'tasmax_day_BCCAQ2_ACCESS1-0_historical+rcp45_r1i1p1_19600101-19911231.nc'),
-    ('downscaled', 'unique_id',
-     'tasmax_day_BCCAQ2_ACCESS1-0_historical-rcp45_r1i1p1_19600101-19911231'),
 
     ('hydromodel_gcm', 'first_MiB_md5sum', '6544f8a39ba722e2085677525269c883'),
     ('hydromodel_gcm', 'md5', '36af1a6d4665fecf0d1a727a7cbdc6ef'),
@@ -154,9 +150,6 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('hydromodel_gcm', 'cmor_filename',
      'BASEFLOW+EVAP+GLAC_AREA_BAND+GLAC_MBAL_BAND+RUNOFF+SWE_BAND_day_VICGL+'
      'RGM+HydroCon_ACCESS1-0_historical+rcp45_r1i1p1_19840101-19951231.nc'),
-    ('hydromodel_gcm', 'unique_id',
-     'BASEFLOW-EVAP-GLAC_AREA_BAND-GLAC_MBAL_BAND-RUNOFF-SWE_BAND_day_VICGL-'
-     'RGM-HydroCon_ACCESS1-0_historical-rcp45_r1i1p1_19840101-19951231'),
 
     # Note: The following properties are not meaningful for a climatological
     # output file and so are not tested:
@@ -184,8 +177,6 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('mClim_gcm', 'model_type', 'GCM'),
     ('mClim_gcm', 'cmor_filename',
      'tasmax_mClim_BNU-ESM_historical_r1i1p1_19650101-19701231.nc'),
-    ('mClim_gcm', 'unique_id',
-     'tasmax_mClim_BNU-ESM_historical_r1i1p1_19650101-19701231'),
 
     ('sClim_gcm', 'first_MiB_md5sum', 'ecd2a0a28ffc12cc795d4e6b623543b6'),
     ('sClim_gcm', 'md5', 'ecd2a0a28ffc12cc795d4e6b623543b6'),
@@ -209,8 +200,6 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('sClim_gcm', 'model_type', 'GCM'),
     ('sClim_gcm', 'cmor_filename',
      'tasmax_sClim_BNU-ESM_historical_r1i1p1_19650101-19701231.nc'),
-    ('sClim_gcm', 'unique_id',
-     'tasmax_sClim_BNU-ESM_historical_r1i1p1_19650101-19701231'),
 
     ('aClim_gcm', 'first_MiB_md5sum', 'b002ec3839db4daffdad335ad0d31563'),
     ('aClim_gcm', 'md5', 'b002ec3839db4daffdad335ad0d31563'),
@@ -234,8 +223,6 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('aClim_gcm', 'model_type', 'GCM'),
     ('aClim_gcm', 'cmor_filename',
      'tasmax_aClim_BNU-ESM_historical_r1i1p1_19650101-19701231.nc'),
-    ('aClim_gcm', 'unique_id',
-     'tasmax_aClim_BNU-ESM_historical_r1i1p1_19650101-19701231'),
 
     ('climdex_ds_gcm', 'first_MiB_md5sum', '5cbe8412f19599f893ba28062e0d7a9b'),
     ('climdex_ds_gcm', 'md5', '5cbe8412f19599f893ba28062e0d7a9b'),
@@ -262,8 +249,6 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('climdex_ds_gcm', 'cmor_filename',
      'altcddETCCDI_yr_BCCAQ_ACCESS1-0_historical+rcp85_'
      'r1i1p1_19500702-21000702.nc'),
-    ('climdex_ds_gcm', 'unique_id',
-     'altcddETCCDI_yr_BCCAQ_ACCESS1-0_historical-rcp85_r1i1p1_19500702-21000702'),
 
     ('gridded_obs', 'first_MiB_md5sum', '6e4b0f8968a18ffa917e34b68a3e5636'),
     ('gridded_obs', 'md5', '6e4b0f8968a18ffa917e34b68a3e5636'),
@@ -287,8 +272,6 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('gridded_obs', 'is_gridded_obs', True),
     ('gridded_obs', 'cmor_filename',
      'pr_day_SYMAP_BC_v1_historical_19500101-19500104.nc'),
-    ('gridded_obs', 'unique_id',
-     'pr_day_SYMAP_BC_v1_historical_19500101-19500104'),
 
      ('gridded_mClimSD_obs', 'first_MiB_md5sum', '7eb975dfd17845621123400dbb6d0e5b'),
      ('gridded_mClimSD_obs', 'md5', '7eb975dfd17845621123400dbb6d0e5b'),
@@ -312,8 +295,6 @@ def test_filepath(cwd, raw_dataset, converter, expected):
      ('gridded_mClimSD_obs', 'is_gridded_obs', True),
      ('gridded_mClimSD_obs', 'cmor_filename',
       'pr_mClimSD_anusplin_historical_19710201-20000531.nc'),
-     ('gridded_mClimSD_obs', 'unique_id',
-      'pr_mClimSD_anusplin_historical_19710201-20000531'),
 
     ('streamflow', 'first_MiB_md5sum', 'e399c143415d13b7eab6809daa9cfc2f'),
     ('streamflow', 'md5', 'e399c143415d13b7eab6809daa9cfc2f'),
@@ -339,8 +320,6 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('streamflow', 'ensemble_member', 'r1i2p3'),
     ('streamflow', 'cmor_filename',
      'streamflow_day_model_exp_r1i2p3_19450102-19450117.nc'),
-    ('streamflow', 'unique_id',
-     'streamflow_day_model_exp_r1i2p3_19450102-19450117'),
 
 ], indirect=['tiny_dataset'])
 def test_simple_property(tiny_dataset, prop, expected):
