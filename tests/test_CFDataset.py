@@ -742,6 +742,7 @@ def test_get_var_bounds_and_values(tiny_dataset, var_name):
     ('gcm', 'lon', (264.375, 272.8125)),
     ('gcm', 'lat', (65.5776, 73.9475)),
     ('gcm', 'tasmax', (220.68445, 304.13501)),
+    ('hydromodel_gcm', 'BASEFLOW', (0.44171903, 3.790513)),
 ], indirect=['tiny_dataset'])
 def test_variable_range(tiny_dataset, var_name, expected):
     assert tiny_dataset.var_range(var_name, chunksize=2) == approx(expected)
