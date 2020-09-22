@@ -262,7 +262,19 @@ class CFDataset(Dataset):
         both strict and non-strict behaviours.
         """
         super(CFDataset, self).__init__(*args, **kwargs)
-        self.set_auto_mask(False)
+        # netcdf4 version 1.5 changed the default behaviour of variables.
+        # In v 1.4, variables that had any value equal to _FillValue or
+        # missing_value were converted into numpy masked arrays with such values
+        # masked; variables without any such values became regular numpy arrays.
+        #
+        # In contrast, netCDF4 version 1.5 by default converts all variables to
+        # masked arrays. We don't want that behaviour, we've written a lot of code
+        # assuming things like latitude are simple non-masked numpy arrays.
+        self.set_auto_mask(True) # DO return variables with fill values 
+                                 # as masked arrays
+        self.set_always_mask(False) # DO NOT return variables without 
+                                    # fill values as masked arrats.
+        
         # Store options directly via dict to prevent them being treated as
         # Dataset attributes.
         # It's possible that it would be better to define ``__setattribute__``
