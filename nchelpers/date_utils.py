@@ -162,12 +162,12 @@ def truncate_to_resolution(date, resolution):
     dates will be truncated to December 1 of the *previous* year,
     reflecting that winter crosses the year boundary."""
     if 'minute' in resolution:
-        n = re.match('^(\d+)-minute$',resolution)
+        n = re.match(r'^(\d+)-minute$',resolution)
         if n and int(n.group(1)) in [1, 2, 5, 15, 30]:
             return datetime(date.year, date.month, date.day, date.hour,
                             date.minute - (date.minute % int(n.group(1))))
     elif 'hourly' in resolution:
-        n = re.match('^(\d+)-hourly$',resolution)
+        n = re.match(r'^(\d+)-hourly$',resolution)
         if n and int(n.group(1)) in [1, 3, 6, 12]:
             return datetime(date.year, date.month, date.day,
                             date.hour - (date.hour % int(n.group(1))))
