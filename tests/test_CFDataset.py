@@ -142,7 +142,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('hydromodel_gcm', 'is_downscaled_output', False),
     ('hydromodel_gcm', 'is_hydromodel_output', True),
     ('hydromodel_gcm', 'is_hydromodel_dgcm_output', True),
-    # ('hydromodel_gcm', 'is_hydromodel_iobs_output', False), # TODO
+    ('hydromodel_gcm', 'is_hydromodel_iobs_output', False),
     ('hydromodel_gcm', 'is_streamflow_model_output', False),
     ('hydromodel_gcm', 'is_streamflow_model_dgcm_output', False),
     ('hydromodel_gcm', 'is_streamflow_model_iobs_output', False),
@@ -157,6 +157,32 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('hydromodel_gcm', 'unique_id',
      'BASEFLOW-EVAP-GLAC_AREA_BAND-GLAC_MBAL_BAND-RUNOFF-SWE_BAND_day_VICGL-'
      'RGM-HydroCon_ACCESS1-0_historical-rcp45_r1i1p1_19840101-19951231'),
+
+    ('hydromodel_obs', 'first_MiB_md5sum', '824e1a26198d727e05748bbe4bea46ea'),
+    ('hydromodel_obs', 'md5', '824e1a26198d727e05748bbe4bea46ea'),
+    ('hydromodel_obs', 'climatology_bounds_var_name', None),
+    ('hydromodel_obs', 'sampling_geometry', 'gridded'),
+    ('hydromodel_obs', 'is_multi_year', False),
+    ('hydromodel_obs', 'is_multi_year_mean', False),
+    ('hydromodel_obs', 'time_range', (0.0, 9.0)),
+    ('hydromodel_obs', 'time_step_size', time_to_seconds(1, 'days')),
+    ('hydromodel_obs', 'time_resolution', 'daily'),
+    ('hydromodel_obs', 'is_unprocessed_gcm_output', False),
+    ('hydromodel_obs', 'is_downscaled_output', False),
+    ('hydromodel_obs', 'is_hydromodel_output', True),
+    ('hydromodel_obs', 'is_hydromodel_dgcm_output', False),
+    ('hydromodel_obs', 'is_hydromodel_iobs_output', True),
+    ('hydromodel_obs', 'is_streamflow_model_output', False),
+    ('hydromodel_obs', 'is_streamflow_model_dgcm_output', False),
+    ('hydromodel_obs', 'is_streamflow_model_iobs_output', False),
+    ('hydromodel_obs', 'is_climdex_output', False),
+    ('hydromodel_obs', 'is_climdex_ds_gcm_output', False),
+    ('hydromodel_obs', 'is_gridded_obs', False),
+    ('hydromodel_obs', 'cmor_filename',
+     'BASEFLOW_day_VICGL+RGM+HydroConductor_PNWNAmet_19450101-19450110_nwna.nc'),
+    ('hydromodel_obs', 'unique_id',
+     'BASEFLOW_day_VICGL-RGM-HydroConductor_PNWNAmet_19450101-19450110_nwna'),
+
 
     # Note: The following properties are not meaningful for a climatological
     # output file and so are not tested:
@@ -250,7 +276,7 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('climdex_ds_gcm', 'is_downscaled_output', False),
     ('climdex_ds_gcm', 'is_hydromodel_output', False),
     ('climdex_ds_gcm', 'is_hydromodel_dgcm_output', False),
-    # ('climdex_ds_gcm', 'is_hydromodel_iobs_output', False), # TODO
+    ('climdex_ds_gcm', 'is_hydromodel_iobs_output', False), 
     ('climdex_ds_gcm', 'is_streamflow_model_output', False),
     ('climdex_ds_gcm', 'is_streamflow_model_dgcm_output', False),
     ('climdex_ds_gcm', 'is_streamflow_model_iobs_output', False),
