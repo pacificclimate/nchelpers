@@ -1709,12 +1709,6 @@ class CFDataset(Dataset):
                     experiment=_replace_commas(self.gcm.experiment_id),
                     geo_info=getattr(self, 'domain', None)
                 )
-            elif self.is_hydromodel_iobs_output:
-                components.update(
-                    hydromodel_method=_replace_commas(self.method_id),
-                    obs_dataset_id=self.observations__dataset_id,
-                    geo_info=getattr(self, 'domain', None)
-                )
             elif self.is_streamflow_model_dgcm_output:
                 components.update(
                     model=self.gcm.model_id,
@@ -1728,6 +1722,12 @@ class CFDataset(Dataset):
                     experiment=_replace_commas(self.gcm.experiment_id),
                     geo_info=getattr(self, 'domain', None)
                 )
+        elif self.is_hydromodel_iobs_output:
+            components.update(
+                hydromodel_method=_replace_commas(self.method_id),
+                obs_dataset_id=self.observations__dataset_id,
+                geo_info=getattr(self, 'domain', None)
+            )
 
         elif self.is_other:
             # CAUTION: Temporary solution to a bigger problem here

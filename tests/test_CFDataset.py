@@ -158,8 +158,8 @@ def test_filepath(cwd, raw_dataset, converter, expected):
      'BASEFLOW-EVAP-GLAC_AREA_BAND-GLAC_MBAL_BAND-RUNOFF-SWE_BAND_day_VICGL-'
      'RGM-HydroCon_ACCESS1-0_historical-rcp45_r1i1p1_19840101-19951231'),
 
-    ('hydromodel_obs', 'first_MiB_md5sum', 'e6658c6559001b8e8a1107839eef3105'),
-    ('hydromodel_obs', 'md5', 'e6658c6559001b8e8a1107839eef3105'),
+    ('hydromodel_obs', 'first_MiB_md5sum', '824e1a26198d727e05748bbe4bea46ea'),
+    ('hydromodel_obs', 'md5', '824e1a26198d727e05748bbe4bea46ea'),
     ('hydromodel_obs', 'climatology_bounds_var_name', None),
     ('hydromodel_obs', 'sampling_geometry', 'gridded'),
     ('hydromodel_obs', 'is_multi_year', False),
@@ -178,11 +178,10 @@ def test_filepath(cwd, raw_dataset, converter, expected):
     ('hydromodel_obs', 'is_climdex_output', False),
     ('hydromodel_obs', 'is_climdex_ds_gcm_output', False),
     ('hydromodel_obs', 'is_gridded_obs', False),
-    ('hydromodel_obs', 'model_type', 'GCM'),
     ('hydromodel_obs', 'cmor_filename',
-     'BASEFLOW_day_VICGL+RGM+HydroCon_PNWNmet_19840101-19951231.nc'),
+     'BASEFLOW_day_VICGL+RGM+HydroConductor_PNWNAmet_19450101-19450110_nwna.nc'),
     ('hydromodel_obs', 'unique_id',
-     'BASEFLOW_day_VICGL+RGM+HydroCon_PNWNmet_19840101-19951231.nc'),
+     'BASEFLOW_day_VICGL-RGM-HydroConductor_PNWNAmet_19450101-19450110_nwna'),
 
 
     # Note: The following properties are not meaningful for a climatological
