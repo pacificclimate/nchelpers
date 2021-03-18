@@ -17,6 +17,7 @@ from dateutil.relativedelta import relativedelta
 import hashlib
 import re
 import collections
+import uuid
 
 from cached_property import cached_property
 import numpy as np
@@ -1751,16 +1752,10 @@ class CFDataset(Dataset):
             extension='.nc', **self._cmor_type_filename_components()
         )
 
-    @property
+    @cached_property
     def unique_id(self):
-        """A unique id for this file, based on its CMOR filename"""
-        unique_id = cmor_type_filename(**self._cmor_type_filename_components())
-
-        dim_axes = set(self.dim_axes_from_names().values())
-        if not (dim_axes <= {'X', 'Y', 'Z', 'T'}):
-            unique_id += "_dim" + ''.join(sorted(dim_axes))
-
-        return unique_id.replace('+', '-')  # In original code, but why?
+        """A unique id for this file"""
+        return str(uuid.uuid4())
 
     ###########################################################################
     # Climatology-specific methods
