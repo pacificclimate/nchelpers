@@ -426,6 +426,23 @@ class CFDataset(Dataset):
                 'institute': 'institute_id',
                 'experiment': 'gcm.experiment_id',
                 'ensemble_member': 'ensemble_member',  # uses prefixed values
+                'physics_version': 'gcm.physics_version',
+                'realization': 'gcm.realization',
+                'initialization_method': 'gcm.initialization_method',
+            },
+
+            'CMIP6': {
+                'project': 'project_id',
+                'initialization_method': 'gcm.initialization_index',
+                'physics_version': 'gcm.physics_index',
+                'realization': 'gcm.realization_index',
+                'forcing_index': 'gcm.forcing_index',
+                'realm': 'modeling_realm',
+                'model': 'gcm.source_id',
+                'source_id': 'model_id',
+                'emissions': 'gcm.experiment_id',
+                'run': 'ensemble_member',
+                'institution': 'institution_id'
             },
 
             # CAUTION: This is a minimal temporary solution for a priority
@@ -562,15 +579,24 @@ class CFDataset(Dataset):
 
     @property
     def ensemble_member(self):
-        """CMIP5 standard ensemble member code for this file"""
-        components = {}
-        for component, attr in [
+        """CMIP5 standards have a three-item ensemble member code (r#i#p#)
+        but CMIP6 has a four-item code (r#i#p#f#)"""
+        component_list = [
             ('r', 'realization'),
             ('i', 'initialization_method'),
             ('p', 'physics_version')
-        ]:
-            components[component] = getattr(self.gcm, attr)
-        return 'r{r}i{i}p{p}'.format(**components)
+        ]
+        if self.metadata.project == 'CMIP6':
+            component_list.append(('f', 'forcing_index'))
+
+        components = {}
+        for component, attr in component_list:
+            components[component] = self.metadata.__getattr__(attr)
+        em_template = "r{r}i{i}p{p}"
+        if self.metadata.project == 'CMIP6':
+            em_template = "{}{}".format(em_template, "f{f}")
+        return em_template.format(**components)
+
 
     @property
     def model_type(self):
@@ -715,7 +741,7 @@ class CFDataset(Dataset):
     def is_gcm_derivative(self):
         """True iff the content of the file is GCM output or a derivative
         thereof"""
-        return self.metadata.project in ('CMIP3', 'CMIP5')
+        return self.metadata.project in ('CMIP3', 'CMIP5', 'CMIP6')
 
     @property
     def is_other(self):
