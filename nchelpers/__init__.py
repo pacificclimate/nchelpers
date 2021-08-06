@@ -437,9 +437,7 @@ class CFDataset(Dataset):
                 'physics_version': 'gcm.physics_index',
                 'realization': 'gcm.realization_index',
                 'forcing_index': 'gcm.forcing_index',
-                'realm': 'modeling_realm',
                 'model': 'gcm.source_id',
-                'source_id': 'model_id',
                 'emissions': 'gcm.experiment_id',
                 'run': 'ensemble_member',
                 'institution': 'institution_id'
@@ -586,15 +584,15 @@ class CFDataset(Dataset):
             ('i', 'initialization_method'),
             ('p', 'physics_version')
         ]
+        components = {}
+        em_template = "r{r}i{i}p{p}"
+
         if self.metadata.project == 'CMIP6':
             component_list.append(('f', 'forcing_index'))
+            em_template += "f{f}"
 
-        components = {}
         for component, attr in component_list:
             components[component] = self.metadata.__getattr__(attr)
-        em_template = "r{r}i{i}p{p}"
-        if self.metadata.project == 'CMIP6':
-            em_template = "{}{}".format(em_template, "f{f}")
         return em_template.format(**components)
 
 
