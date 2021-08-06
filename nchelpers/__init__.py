@@ -605,7 +605,7 @@ class CFDataset(Dataset):
         Really rudimentary decision making about model type.
         """
         if self.metadata.project == 'NARCCAP' or \
-                        self.metadata.project not in ('IPCC Fourth Assessment', 'CMIP5'):
+                        self.metadata.project not in ('IPCC Fourth Assessment', 'CMIP5', 'CMIP6'):
             return 'RCM'
         else:
             return 'GCM'
