@@ -23,13 +23,19 @@ import numpy as np
 import six
 
 from netCDF4 import Dataset, Variable, num2date, date2num
-from nchelpers.date_utils import \
-    time_scale, resolution_standard_name, \
-    time_to_seconds, seconds_to_time, \
-    d2ss, to_datetime, truncate_to_resolution
+from nchelpers.date_utils import (
+    time_scale,
+    resolution_standard_name,
+    time_to_seconds,
+    seconds_to_time,
+    d2ss,
+    to_datetime,
+    truncate_to_resolution,
+)
 from nchelpers.decorators import prevent_infinite_recursion
 from nchelpers.exceptions import CFAttributeError, CFValueError
 from nchelpers.iteration import opt_chunk_shape, chunks
+
 
 def getattr_cf_error(object, attr_name):
     """
@@ -41,35 +47,37 @@ def getattr_cf_error(object, attr_name):
         return getattr(object, attr_name)
     except AttributeError:
         if isinstance(object, Dataset):
-            object_name = 'file'
+            object_name = "file"
         elif isinstance(object, Variable):
-            object_name = 'variable {}'.format(object.name)
+            object_name = "variable {}".format(object.name)
         else:
-            object_name = 'object of type {}'.format(type(object))
+            object_name = "object of type {}".format(type(object))
         raise CFAttributeError(
-            "Expected {} to have attribute '{}', but no such attribute exists"
-                .format(object_name, attr_name)
+            "Expected {} to have attribute '{}', but no such attribute exists".format(
+                object_name, attr_name
+            )
         )
+
 
 # Map of nchelpers time resolution strings to MIP table names, standard where
 # possible. For an explanation of the content of this map, see the discussion
 # in section titled "MIP table / table_id" in
 # https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data
 standard_tres_to_mip_table = {
-    '1-minute': 'subhr',  # frequency std
-    '2-minute': 'subhr',  # frequency std
-    '5-minute': 'subhr',  # frequency std
-    '15-minute': 'subhr',  # frequency std
-    '30-minute': 'subhr',  # frequency std
-    '1-hourly': '1hr',  # custom: neither a MIP table nor a freq standard term
-    '3-hourly': '3hr',  # frequency std
-    '6-hourly': '6hr',  # frequency std
-    '12-hourly': '12hr',  # custom: neither a MIP table nor a freq standard term
-    'daily': 'day',  # MIP table and frequency standard
-    'monthly': 'mon',  # frequency std
-    'yearly': 'yr',  # frequency std
-    'fx': 'fx', # time-independent data
-    'fixed': 'fx'
+    "1-minute": "subhr",  # frequency std
+    "2-minute": "subhr",  # frequency std
+    "5-minute": "subhr",  # frequency std
+    "15-minute": "subhr",  # frequency std
+    "30-minute": "subhr",  # frequency std
+    "1-hourly": "1hr",  # custom: neither a MIP table nor a freq standard term
+    "3-hourly": "3hr",  # frequency std
+    "6-hourly": "6hr",  # frequency std
+    "12-hourly": "12hr",  # custom: neither a MIP table nor a freq standard term
+    "daily": "day",  # MIP table and frequency standard
+    "monthly": "mon",  # frequency std
+    "yearly": "yr",  # frequency std
+    "fx": "fx",  # time-independent data
+    "fixed": "fx",
 }
 
 
@@ -78,23 +86,20 @@ def _normalize180(x):
     return (x + 180.0) % 360.0 - 180.0
 
 
-def _cmor_formatted_time_range(t_min, t_max, time_resolution='daily'):
+def _cmor_formatted_time_range(t_min, t_max, time_resolution="daily"):
     """Format a time range as string in YYYY[mm[dd]] format, min and max
     separated by a dash."""
     try:
-        fmt = {
-            'yearly': '%Y',
-            'monthly': '%Y%m',
-            'daily': '%Y%m%d'
-        }[time_resolution]
+        fmt = {"yearly": "%Y", "monthly": "%Y%m", "daily": "%Y%m%d"}[time_resolution]
     except KeyError:
         raise CFValueError(
             "Cannot format a time range with resolution '{}' "
-            "(only yearly, monthly or daily)".format(time_resolution))
-    return '{}-{}'.format(t_min.strftime(fmt), t_max.strftime(fmt))
+            "(only yearly, monthly or daily)".format(time_resolution)
+        )
+    return "{}-{}".format(t_min.strftime(fmt), t_max.strftime(fmt))
 
 
-def cmor_type_filename(extension='', **component_values):
+def cmor_type_filename(extension="", **component_values):
     """Return a filename built from supplied component values, following the a
     CMOR-based filename standards in
     https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data
@@ -107,7 +112,7 @@ def cmor_type_filename(extension='', **component_values):
     required components or any rules other than order.
     """
     # Include these filename components in this order ...
-    component_names = '''
+    component_names = """
         variable
         mip_table
         frequency
@@ -119,14 +124,19 @@ def cmor_type_filename(extension='', **component_values):
         obs_dataset_id
         time_range
         geo_info
-    '''.split()
+    """.split()
     # ... if they are defined in component_values
-    return '_'.join(component_values[cname] for cname in component_names
-                    if component_values.get(cname, None) is not None) \
-           + extension
+    return (
+        "_".join(
+            component_values[cname]
+            for cname in component_names
+            if component_values.get(cname, None) is not None
+        )
+        + extension
+    )
 
 
-def _replace_commas(s, sep='+'):
+def _replace_commas(s, sep="+"):
     """Return a string constructed by joining with `sep` the substrings of `s`
     delimited by commas and arbitrary spaces.
 
@@ -134,7 +144,7 @@ def _replace_commas(s, sep='+'):
     :param sep: (str) separator string for join
     :return: see above
     """
-    return re.sub(r'\s*,\s*', sep, s)
+    return re.sub(r"\s*,\s*", sep, s)
 
 
 def _indirection_info(value):
@@ -147,12 +157,12 @@ def _indirection_info(value):
         of a property
     :return: (tuple) (is_indirected, property_name) see above
     """
-    if isinstance(value, six.string_types) and value[0] == '@':
+    if isinstance(value, six.string_types) and value[0] == "@":
         return True, value[1:]
     return False, None
 
 
-def standard_climo_periods(calendar='standard'):
+def standard_climo_periods(calendar="standard"):
     """Returns a dict containing the start and end dates, under the specified
     calendar, of standard climatological periods, keyed by abbreviations for
     those periods, e.g., '6190' for 1961-1990.
@@ -161,18 +171,20 @@ def standard_climo_periods(calendar='standard'):
     hydrological years, which begin/end Oct 1 / Sep 30. Discussions with
     Markus Schnorbus confirm that for 30-year means, the difference in annual
     and season averages is negligible and therefore we do not have to allow
-    for alternate begin and end dates. """
+    for alternate begin and end dates."""
     standard_climo_years = {
-        '6190': (1961, 1990),
-        '7100': (1971, 2000),
-        '8110': (1981, 2010),
-        '2020': (2010, 2039),
-        '2050': (2040, 2069),
-        '2080': (2070, 2099)
+        "6190": (1961, 1990),
+        "7100": (1971, 2000),
+        "8110": (1981, 2010),
+        "2020": (2010, 2039),
+        "2050": (2040, 2069),
+        "2080": (2070, 2099),
     }
-    end_day = 30 if calendar == '360_day' else 31
-    return {k: (datetime(start_year, 1, 1), datetime(end_year, 12, end_day))
-            for k, (start_year, end_year) in standard_climo_years.items()}
+    end_day = 30 if calendar == "360_day" else 31
+    return {
+        k: (datetime(start_year, 1, 1), datetime(end_year, 12, end_day))
+        for k, (start_year, end_year) in standard_climo_years.items()
+    }
 
 
 class CFDataset(Dataset):
@@ -268,8 +280,8 @@ class CFDataset(Dataset):
         # It's possible that it would be better to define ``__setattribute__``
         # with a special case for this attr name, complementary to
         # ``__getattribute__``.
-        self.__dict__['_cf_dataset_options'] = {
-            'strict_metadata': kwargs.get('strict_metadata', False)
+        self.__dict__["_cf_dataset_options"] = {
+            "strict_metadata": kwargs.get("strict_metadata", False)
         }
 
     ###########################################################################
@@ -283,16 +295,17 @@ class CFDataset(Dataset):
         fp = super(CFDataset, self).filepath()
         converters = {
             None: lambda fp: fp,
-            'abspath': os.path.abspath,
-            'normpath': os.path.normpath,
-            'realpath': os.path.realpath,
+            "abspath": os.path.abspath,
+            "normpath": os.path.normpath,
+            "realpath": os.path.realpath,
         }
         try:
             return converters[converter](fp)
         except:
             raise ValueError(
-                "Expected convert to have value in {}, but got '{}'"
-                    .format(converters.keys(), converter)
+                "Expected convert to have value in {}, but got '{}'".format(
+                    converters.keys(), converter
+                )
             )
 
     # noinspection PyPep8Naming
@@ -300,8 +313,8 @@ class CFDataset(Dataset):
     def first_MiB_md5sum(self):
         """MD5 digest of first MiB of this file"""
         m = hashlib.md5()
-        with open(self.filepath(), 'rb') as f:
-            m.update(f.read(2**20))
+        with open(self.filepath(), "rb") as f:
+            m.update(f.read(2 ** 20))
         return m.hexdigest()
 
     @property
@@ -311,7 +324,7 @@ class CFDataset(Dataset):
         https://stackoverflow.com/a/3431838
         """
         hash_md5 = hashlib.md5()
-        with open(self.filepath(), 'rb') as f:
+        with open(self.filepath(), "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):
                 hash_md5.update(chunk)
         return hash_md5.hexdigest()
@@ -347,7 +360,7 @@ class CFDataset(Dataset):
         :param name: (str) name of attribute
         """
         # Special attribute named ``_cf_dataset_options``.
-        if name == '_cf_dataset_options':
+        if name == "_cf_dataset_options":
             return self.__dict__[name]
 
         # Indirect value
@@ -402,47 +415,44 @@ class CFDataset(Dataset):
             self.dataset = dataset
 
         _aliases_by_metadata_standard = {
-            'CMIP3': {
+            "CMIP3": {
                 # Original aliases - some mangle the terminology somewhat,
-                'project': 'project_id',
-                'institution': 'institute',
-                'model': 'source',
-                'emissions': 'experiment_id',
-                'run': 'realization',
+                "project": "project_id",
+                "institution": "institute",
+                "model": "source",
+                "emissions": "experiment_id",
+                "run": "realization",
                 # Better aliases - adhere to CMIP5 terminology
-                'institute': 'institute',
-                'experiment': 'experiment_id',
-                'ensemble_member': 'realization',
+                "institute": "institute",
+                "experiment": "experiment_id",
+                "ensemble_member": "realization",
             },
-
-            'CMIP5': {
+            "CMIP5": {
                 # Original aliases - some mangle the terminology somewhat,
-                'project': 'project_id',
-                'institution': 'institute_id',
-                'model': 'gcm.model_id',
-                'emissions': 'gcm.experiment_id',
-                'run': 'ensemble_member',  # uses prefixed values
+                "project": "project_id",
+                "institution": "institute_id",
+                "model": "gcm.model_id",
+                "emissions": "gcm.experiment_id",
+                "run": "ensemble_member",  # uses prefixed values
                 # Better aliases - adhere to CMIP5 terminology
-                'institute': 'institute_id',
-                'experiment': 'gcm.experiment_id',
-                'ensemble_member': 'ensemble_member',  # uses prefixed values
-                'physics_version': 'gcm.physics_version',
-                'realization': 'gcm.realization',
-                'initialization_method': 'gcm.initialization_method',
+                "institute": "institute_id",
+                "experiment": "gcm.experiment_id",
+                "ensemble_member": "ensemble_member",  # uses prefixed values
+                "physics_version": "gcm.physics_version",
+                "realization": "gcm.realization",
+                "initialization_method": "gcm.initialization_method",
             },
-
-            'CMIP6': {
-                'project': 'mip_era',
-                'initialization_method': 'gcm.initialization_index',
-                'physics_version': 'gcm.physics_index',
-                'realization': 'gcm.realization_index',
-                'forcing_index': 'gcm.forcing_index',
-                'model': 'gcm.source_id',
-                'emissions': 'gcm.experiment_id',
-                'run': 'ensemble_member',
-                'institution': 'institution_id'
+            "CMIP6": {
+                "project": "mip_era",
+                "initialization_method": "gcm.initialization_index",
+                "physics_version": "gcm.physics_index",
+                "realization": "gcm.realization_index",
+                "forcing_index": "gcm.forcing_index",
+                "model": "gcm.source_id",
+                "emissions": "gcm.experiment_id",
+                "run": "ensemble_member",
+                "institution": "institution_id",
             },
-
             # CAUTION: This is a minimal temporary solution for a priority
             # project. This mapping uses attribute names (for both metadata.*
             # and mapped attributes) that apply to CMIP*/climate model derived
@@ -452,16 +462,16 @@ class CFDataset(Dataset):
             # Note also that this mapping does not use any prefixed values,
             # which (at present) are specific to CMIP/climate model derived
             # datasets.
-            'other': {
+            "other": {
                 # Original aliases - some mangle the terminology somewhat,
-                'project': 'project_id',
-                'institution': 'institute_id',
-                'model': 'model_id',
-                'emissions': 'experiment_id',
-                'run': 'run',  # bogus attribute to replace ensemble_member
+                "project": "project_id",
+                "institution": "institute_id",
+                "model": "model_id",
+                "emissions": "experiment_id",
+                "run": "run",  # bogus attribute to replace ensemble_member
                 # Better aliases - adhere to CMIP5 terminology
-                'institute': 'institute_id',
-                'experiment': 'experiment_id',
+                "institute": "institute_id",
+                "experiment": "experiment_id",
             },
         }
 
@@ -477,12 +487,13 @@ class CFDataset(Dataset):
 
             if alias not in aliases.keys():
                 raise CFAttributeError(
-                    "No such unified attribute: '{}' for a metadata standard of '{}"
-                    .format(alias, ms)
+                    "No such unified attribute: '{}' for a metadata standard of '{}".format(
+                        alias, ms
+                    )
                 )
 
             def getdottedattr(obj, dotted_attr):
-                attrs = dotted_attr.split('.')
+                attrs = dotted_attr.split(".")
                 value = obj
                 for attr in attrs:
                     value = getattr(value, attr)
@@ -496,9 +507,9 @@ class CFDataset(Dataset):
 
         def _get_metadata_standard(self):
             """heuristic function that attempts to determine what
-               metadata standard (CMIP3, CMIP5, CMIP6, non-GCM)
-               this dataset is using. Usually this is the project_id
-               attribute, but for CMIP6, it is the mip_era attribute"""
+            metadata standard (CMIP3, CMIP5, CMIP6, non-GCM)
+            this dataset is using. Usually this is the project_id
+            attribute, but for CMIP6, it is the mip_era attribute"""
             print("inside get metadata standard")
             try:
                 project_id = self.dataset.project_id
@@ -510,10 +521,14 @@ class CFDataset(Dataset):
                 mip_era = self.dataset.mip_era
                 if mip_era == "CMIP6":
                     return mip_era
-                else: 
-                    raise CFValueError("Unexpected value for mip_era: {}".format(mip_era))
+                else:
+                    raise CFValueError(
+                        "Unexpected value for mip_era: {}".format(mip_era)
+                    )
             except AttributeError:
-                raise CFValueError("Unable to determine dataset standard. Check project_id and mip_era attributes")
+                raise CFValueError(
+                    "Unable to determine dataset standard. Check project_id and mip_era attributes"
+                )
 
     @property
     def metadata(self):
@@ -538,31 +553,34 @@ class CFDataset(Dataset):
         """
 
         def __init__(self, dataset):
-            self.__dict__['dataset'] = dataset
+            self.__dict__["dataset"] = dataset
 
         def _prefixed(self, attr):
             if self.dataset.is_unprocessed_gcm_output:
-                prefix = ''
+                prefix = ""
             elif self.dataset.is_downscaled_output:
-                prefix = 'GCM__'
+                prefix = "GCM__"
             elif self.dataset.is_hydromodel_dgcm_output:
-                prefix = 'downscaling__GCM__'
+                prefix = "downscaling__GCM__"
             elif self.dataset.is_hydromodel_iobs_output:
                 raise CFAttributeError(
-                    'GCM attributes have no meaning for a hydrological model '
-                    'forced by observational data')
+                    "GCM attributes have no meaning for a hydrological model "
+                    "forced by observational data"
+                )
             elif self.dataset.is_streamflow_model_dgcm_output:
-                prefix = 'hydromodel__downscaling__GCM__'
+                prefix = "hydromodel__downscaling__GCM__"
             elif self.dataset.is_streamflow_model_iobs_output:
                 raise CFAttributeError(
-                    'GCM attributes have no meaning for a streamflow model '
-                    'forced by observational data')
-            elif (self.dataset.is_climdex_ds_gcm_output):
-                prefix = 'downscaling__GCM__'
+                    "GCM attributes have no meaning for a streamflow model "
+                    "forced by observational data"
+                )
+            elif self.dataset.is_climdex_ds_gcm_output:
+                prefix = "downscaling__GCM__"
             else:
                 raise CFAttributeError(
-                    'Cannot generate automatic GCM attribute prefixes for a '
-                    'file without a recognized type')
+                    "Cannot generate automatic GCM attribute prefixes for a "
+                    "file without a recognized type"
+                )
 
             return prefix + attr
 
@@ -573,7 +591,8 @@ class CFDataset(Dataset):
             except AttributeError:
                 raise CFAttributeError(
                     "Expected file to contain attribute '{}' but no such "
-                    "attribute exists".format(self._prefixed(attr)))
+                    "attribute exists".format(self._prefixed(attr))
+                )
 
         def __setattr__(self, attr, value):
             prefixed_attr = self._prefixed(attr)
@@ -591,21 +610,20 @@ class CFDataset(Dataset):
         """CMIP5 standards have a three-item ensemble member code (r#i#p#)
         but CMIP6 has a four-item code (r#i#p#f#)"""
         component_list = [
-            ('r', 'realization'),
-            ('i', 'initialization_method'),
-            ('p', 'physics_version')
+            ("r", "realization"),
+            ("i", "initialization_method"),
+            ("p", "physics_version"),
         ]
         components = {}
         em_template = "r{r}i{i}p{p}"
 
-        if self.metadata.project == 'CMIP6':
-            component_list.append(('f', 'forcing_index'))
+        if self.metadata.project == "CMIP6":
+            component_list.append(("f", "forcing_index"))
             em_template += "f{f}"
 
         for component, attr in component_list:
             components[component] = self.metadata.__getattr__(attr)
         return em_template.format(**components)
-
 
     @property
     def model_type(self):
@@ -613,11 +631,14 @@ class CFDataset(Dataset):
         Supports modelmeta/mm_cataloguer/index_netcdf.py.
         Really rudimentary decision making about model type.
         """
-        if self.metadata.project == 'NARCCAP' or \
-                        self.metadata.project not in ('IPCC Fourth Assessment', 'CMIP5', 'CMIP6'):
-            return 'RCM'
+        if self.metadata.project == "NARCCAP" or self.metadata.project not in (
+            "IPCC Fourth Assessment",
+            "CMIP5",
+            "CMIP6",
+        ):
+            return "RCM"
         else:
-            return 'GCM'
+            return "GCM"
 
     ###########################################################################
     # File content type
@@ -644,10 +665,10 @@ class CFDataset(Dataset):
 
         """
         try:
-            return 'dsg.{}'.format(self.featureType)
+            return "dsg.{}".format(self.featureType)
         except AttributeError:
             # TODO: Check more carefully for gridded datasets?
-            return 'gridded'
+            return "gridded"
 
     @property
     def is_time_invariant(self):
@@ -660,7 +681,7 @@ class CFDataset(Dataset):
         time-independent dataset."""
         try:
             self.time_var
-            return False # this dataset has a time dimensions
+            return False  # this dataset has a time dimensions
         except CFValueError:
             return self.frequency == "fx"
 
@@ -699,7 +720,7 @@ class CFDataset(Dataset):
             return True
 
         # Strict rules begin here
-        if self._cf_dataset_options['strict_metadata']:
+        if self._cf_dataset_options["strict_metadata"]:
             return False
 
         # Additional non-strict heuristics begin here
@@ -712,19 +733,18 @@ class CFDataset(Dataset):
         def check_monthly(time_steps):
             def check(t, month):
                 return t.month == month and t.day in {14, 15, 16}
-            return all(check(next(time_steps), month)
-                       for month in range(1, 13))
+
+            return all(check(next(time_steps), month) for month in range(1, 13))
 
         def check_seasonal(time_steps):
             def check(t, month):
                 return t.month == month and t.day in {15, 16, 17}
-            return all(check(next(time_steps), month)
-                       for month in (1, 4, 7, 10))
+
+            return all(check(next(time_steps), month) for month in (1, 4, 7, 10))
 
         def check_yearly(time_steps):
             t = next(time_steps)
-            return ((t.month == 6 and t.day == 30) or
-                    (t.month == 7 and t.day in {1, 2}))
+            return (t.month == 6 and t.day == 30) or (t.month == 7 and t.day in {1, 2})
 
         try:
             check_intervals = {
@@ -739,7 +759,7 @@ class CFDataset(Dataset):
         except KeyError:
             pass  # No suspcious lengths: Try next heuristic
         else:
-            time_steps = (t for t in self.time_steps['datetime'])
+            time_steps = (t for t in self.time_steps["datetime"])
             if all(check(time_steps) for check in check_intervals):
                 return True
 
@@ -750,91 +770,99 @@ class CFDataset(Dataset):
     def is_gcm_derivative(self):
         """True iff the content of the file is GCM output or a derivative
         thereof"""
-        return self.metadata.project in ('CMIP3', 'CMIP5', 'CMIP6')
+        return self.metadata.project in ("CMIP3", "CMIP5", "CMIP6")
 
     @property
     def is_other(self):
         """True iff the content of the file is an 'other' type."""
-        return self.metadata.project == 'other'
+        return self.metadata.project == "other"
 
     @property
     def is_unprocessed_gcm_output(self):
         """True iff the content of the file is unprocessed GCM output."""
-        return self.is_gcm_derivative and self.product == 'output'
+        return self.is_gcm_derivative and self.product == "output"
 
     @property
     def is_downscaled_output(self):
         """True iff the content of the file is downscaling output."""
-        return self.is_gcm_derivative and self.product == 'downscaled output'
+        return self.is_gcm_derivative and self.product == "downscaled output"
 
     @property
     def is_hydromodel_output(self):
         """True iff the content of the file is hydrological model output of
         any kind."""
-        return self.product == 'hydrological model output'
+        return self.product == "hydrological model output"
 
     @property
     def is_hydromodel_dgcm_output(self):
         """True iff the content of the file is output of a hydrological model
         forced by downscaled GCM data."""
-        return (self.is_gcm_derivative
-                and self.is_hydromodel_output
-                and self.forcing_type == 'downscaled gcm')
+        return (
+            self.is_gcm_derivative
+            and self.is_hydromodel_output
+            and self.forcing_type == "downscaled gcm"
+        )
 
     @property
     def is_hydromodel_iobs_output(self):
         """True iff the content of the file is output of a hydrological
         model forced by interpolated observational data."""
-        return (self.is_hydromodel_output
-                and self.forcing_type == 'gridded observations')
+        return self.is_hydromodel_output and self.forcing_type == "gridded observations"
 
     @property
     def is_streamflow_model_output(self):
         """True iff the content of the file is streamflow model output of
         any kind."""
-        return self.product == 'streamflow model output'
+        return self.product == "streamflow model output"
 
     @property
     def is_streamflow_model_dgcm_output(self):
         """True iff the content of the file is output of a hydrological model
         forced by downscaled GCM data."""
-        return (self.is_gcm_derivative
-                and self.is_streamflow_model_output
-                and self.hydromodel__forcing_type == 'downscaled gcm')
+        return (
+            self.is_gcm_derivative
+            and self.is_streamflow_model_output
+            and self.hydromodel__forcing_type == "downscaled gcm"
+        )
 
     @property
     def is_streamflow_model_iobs_output(self):
         """True iff the content of the file is output of a hydrological
         model forced by interpolated observational data."""
-        return (self.is_streamflow_model_output
-                and self.hydromodel__forcing_type == 'gridded observations')
+        return (
+            self.is_streamflow_model_output
+            and self.hydromodel__forcing_type == "gridded observations"
+        )
 
     @property
     def is_climdex_output(self):
         """True iff the content of the file is output of climdex processing."""
-        return self.product == 'CLIMDEX output'
+        return self.product == "CLIMDEX output"
 
     @property
     def is_climdex_gcm_output(self):
         """True iff the content of the file is output of climdex processing
         on an unprocessed GCM output file."""
-        return (self.is_gcm_derivative
-                and self.is_climdex_output
-                and self.input_product == 'output')
+        return (
+            self.is_gcm_derivative
+            and self.is_climdex_output
+            and self.input_product == "output"
+        )
 
     @property
     def is_climdex_ds_gcm_output(self):
         """True iff the content of the file is output of climdex processing
         on a downscaled GCM output file."""
-        return (self.is_gcm_derivative
-                and self.is_climdex_output
-                and self.input_product == 'downscaled output')
+        return (
+            self.is_gcm_derivative
+            and self.is_climdex_output
+            and self.input_product == "downscaled output"
+        )
 
     @property
     def is_gridded_obs(self):
         """True iff the content of the file is gridded observations"""
-        return self.is_other and self.product == 'gridded observations'
-
+        return self.is_other and self.product == "gridded observations"
 
     ###########################################################################
     # Dimensions and axes (gridded datasets)
@@ -858,8 +886,7 @@ class CFDataset(Dataset):
         name, for specified dimension names
         """
         # Invert {dim_name: axis} to {axis: dim_name}
-        return {axis: dim_name
-                for dim_name, axis in self.dim_axes(dim_names).items()}
+        return {axis: dim_name for dim_name, axis in self.dim_axes(dim_names).items()}
 
     def dim_axes(self, dim_names=None):
         """Return a dictionary mapping specified dimension names (or all
@@ -887,14 +914,17 @@ class CFDataset(Dataset):
 
         # Then fill in the rest from the 'axis' attributes
         for dim_name in dim_name_to_axis.keys():
-            if dim_name in self.dimensions and dim_name in self.variables \
-                    and hasattr(self.variables[dim_name], 'axis'):
+            if (
+                dim_name in self.dimensions
+                and dim_name in self.variables
+                and hasattr(self.variables[dim_name], "axis")
+            ):
                 dim_name_to_axis[dim_name] = self.variables[dim_name].axis
 
                 # A reduced grid dimension has the 'compress' attribute.
                 # This kind of dimension is labelled as a 'space' (S) dimension.
-                if hasattr(self.variables[dim_name], 'compress'):
-                    dim_name_to_axis[dim_name] = 'S'
+                if hasattr(self.variables[dim_name], "compress"):
+                    dim_name_to_axis[dim_name] = "S"
 
         return dim_name_to_axis
 
@@ -919,23 +949,22 @@ class CFDataset(Dataset):
         if not dim_names:
             dim_names = self.dim_names()
         dim_to_axis = {
-            'lat': 'Y',
-            'latitude': 'Y',
-            'lon': 'X',
-            'longitude': 'X',
-            'xc': 'X',
-            'yc': 'Y',
-            'x': 'X',
-            'y': 'Y',
-            'time': 'T',
-            'timeofyear': 'T',
-            'plev': 'Z',
-            'lev': 'Z',
-            'level': 'Z',
-            'depth': 'Z',
+            "lat": "Y",
+            "latitude": "Y",
+            "lon": "X",
+            "longitude": "X",
+            "xc": "X",
+            "yc": "Y",
+            "x": "X",
+            "y": "Y",
+            "time": "T",
+            "timeofyear": "T",
+            "plev": "Z",
+            "lev": "Z",
+            "level": "Z",
+            "depth": "Z",
         }
-        return {dim: dim_to_axis[dim]
-                for dim in dim_names if dim in dim_to_axis}
+        return {dim: dim_to_axis[dim] for dim in dim_names if dim in dim_to_axis}
 
     def dim_names(self, var_name=None):
         """Return names of dimensions of a specified variable (or all
@@ -966,16 +995,17 @@ class CFDataset(Dataset):
         :return:
         """
         axes_dim = self.axes_dim()
-        if 'S' not in axes_dim:
+        if "S" not in axes_dim:
             return {}
         compressed_axis_names = self.variables[var_name].compress.split()
         if len(compressed_axis_names) != 2:
             raise CFValueError(
-                "Expected '{}:compress' to contain 2 variable names, found {}"
-                    .format(var_name, compressed_axis_names))
+                "Expected '{}:compress' to contain 2 variable names, found {}".format(
+                    var_name, compressed_axis_names
+                )
+            )
         # TODO: Verify that compressed axis names are always in the order Y, X
-        return {'X': compressed_axis_names[1], 'Y': compressed_axis_names[0]}
-
+        return {"X": compressed_axis_names[1], "Y": compressed_axis_names[0]}
 
     ###########################################################################
     # Variables - general
@@ -1013,27 +1043,26 @@ class CFDataset(Dataset):
         if isinstance(dim_names, six.string_types):
             dim_names = {dim_names}
         elif isinstance(dim_names, collections.Iterable):
-            dim_names = {d for d in dim_names
-                         if isinstance(d, six.string_types)}
+            dim_names = {d for d in dim_names if isinstance(d, six.string_types)}
         else:
             raise ValueError(
-                'Invalid dimensions argument: must be None, str,'
-                ' or iterable(str)')
+                "Invalid dimensions argument: must be None, str," " or iterable(str)"
+            )
 
         var_names = {
-            variable.name for variable in self.variables.values()
-            if len(variable.dimensions) > 0 and
-               dim_names <= set(variable.dimensions)
+            variable.name
+            for variable in self.variables.values()
+            if len(variable.dimensions) > 0 and dim_names <= set(variable.dimensions)
         }
         non_dependent_var_names = set(self.dimensions.keys())
         for variable in self.variables.values():
-            if hasattr(variable, 'bounds'):
+            if hasattr(variable, "bounds"):
                 non_dependent_var_names.add(variable.bounds)
-            if hasattr(variable, 'climatology'):
+            if hasattr(variable, "climatology"):
                 non_dependent_var_names.add(variable.climatology)
-            if hasattr(variable, 'grid_mapping'):
+            if hasattr(variable, "grid_mapping"):
                 non_dependent_var_names.add(variable.grid_mapping)
-            if hasattr(variable, 'coordinates'):
+            if hasattr(variable, "coordinates"):
                 non_dependent_var_names.update(variable.coordinates.split())
         return [name for name in var_names - non_dependent_var_names]
 
@@ -1049,7 +1078,7 @@ class CFDataset(Dataset):
         """
         variable = self.variables[var_name]
         values = variable[:]
-        bounds_var_name = bounds_var_name or getattr(variable, 'bounds', None)
+        bounds_var_name = bounds_var_name or getattr(variable, "bounds", None)
 
         if bounds_var_name:
             # Explicitly defined bounds: use them
@@ -1059,15 +1088,17 @@ class CFDataset(Dataset):
             # No explicit bounds: manufacture them
             midpoints = (
                 # fake lower "midpoint", half of previous step below first value
-                [(3*values[0] - values[1]) / 2] +
+                [(3 * values[0] - values[1]) / 2]
+                +
                 # midpoints of values
-                [(values[i] + values[i+1]) / 2 for i in range(len(values)-1)] +
+                [(values[i] + values[i + 1]) / 2 for i in range(len(values) - 1)]
+                +
                 # fake upper "midpoint", half of previous step above last value
-                [(3*values[-1] - values[-2]) / 2]
+                [(3 * values[-1] - values[-2]) / 2]
             )
             return zip(midpoints[:-1], values, midpoints[1:])
 
-    def var_range(self, var_name, chunksize=2**20):
+    def var_range(self, var_name, chunksize=2 ** 20):
         """Return minimum and maximum value taken by variable (over all
         dimensions).
 
@@ -1076,8 +1107,8 @@ class CFDataset(Dataset):
         """
         # TODO: What about fill values?
         variable = self.variables[var_name]
-        range_min = float('inf')
-        range_max = float('-inf')
+        range_min = float("inf")
+        range_max = float("-inf")
         chunk_shape = opt_chunk_shape(variable.shape, chunksize)
         for chunk in chunks(variable, chunk_shape):
             range_min = min(range_min, np.nanmin(chunk))
@@ -1096,18 +1127,18 @@ class CFDataset(Dataset):
     # * time_step_size
     # * time_range
     # * time_range_as_dates
-    # 
+    #
     # time_resolution returns a resolution of "fixed" for time-invariant datasets.
     @property
     def time_var(self):
         """The time variable (netCDF4.Variable) in this file"""
         axes = self.axes_dim()
-        if 'T' in axes:
-            time_axis = axes['T']
+        if "T" in axes:
+            time_axis = axes["T"]
         else:
             raise CFValueError("No axis is attributed with time information")
         t = self.variables[time_axis]
-        assert hasattr(t, 'units') and hasattr(t, 'calendar')
+        assert hasattr(t, "units") and hasattr(t, "calendar")
         return t
 
     @cached_property
@@ -1116,18 +1147,17 @@ class CFDataset(Dataset):
 
     @cached_property
     def time_steps(self):
-        """List of timesteps, i.e., values of the time dimension, in this file.
-        """
+        """List of timesteps, i.e., values of the time dimension, in this file."""
         # This method appears to be very slow -- probably because of all the
         # frequently unnecessary work it does computing the properties
         # 'numeric' and 'datetime' it returns.
         t = self.time_var
         values = self.time_var_values
         return {
-            'units': t.units,
-            'calendar': t.calendar,
-            'numeric': values,
-            'datetime': num2date(values, t.units, t.calendar)
+            "units": t.units,
+            "calendar": t.calendar,
+            "numeric": values,
+            "datetime": num2date(values, t.units, t.calendar),
         }
 
     @cached_property
@@ -1143,13 +1173,13 @@ class CFDataset(Dataset):
         """A standard string that describes the time resolution of the file"""
         if self.is_multi_year_mean:
             return {
-                12: 'monthly',
-                4: 'seasonal',
-                1: 'yearly',
-                5: 'seasonal,yearly',
-                13: 'monthly,yearly',
-                17: 'monthly,seasonal,yearly',
-            }.get(self.time_var.size, 'other')
+                12: "monthly",
+                4: "seasonal",
+                1: "yearly",
+                5: "seasonal,yearly",
+                13: "monthly,yearly",
+                17: "monthly,seasonal,yearly",
+            }.get(self.time_var.size, "other")
         if self.is_time_invariant:
             return "fixed"
         return resolution_standard_name(self.time_step_size)
@@ -1190,13 +1220,13 @@ class CFDataset(Dataset):
         except AttributeError:
             pass
 
-        if self._cf_dataset_options['strict_metadata']:
+        if self._cf_dataset_options["strict_metadata"]:
             return None
 
         # Non-strict heuristics begin here
 
         # Heuristic: A variable with a likely name exists
-        for name in ['time_bounds', 'time_bnds']:
+        for name in ["time_bounds", "time_bnds"]:
             if name in self.variables:
                 return name
 
@@ -1207,8 +1237,7 @@ class CFDataset(Dataset):
     def time_bounds_values(self):
         """Return values of the time bounds variable as a Python list."""
         if self.time_bounds_var_name is None:
-            raise ValueError(
-                'No time bounds variable is detectable in this file.')
+            raise ValueError("No time bounds variable is detectable in this file.")
         time_bounds_var = self.variables[self.time_bounds_var_name]
         return time_bounds_var[...]
 
@@ -1233,14 +1262,18 @@ class CFDataset(Dataset):
         try:
             return time_var.climatology
         except AttributeError:
-            if self._cf_dataset_options['strict_metadata']:
+            if self._cf_dataset_options["strict_metadata"]:
                 return None
 
         # Non-strict heuristics begin here
 
         # Heuristic: A variable with a likely name exists
-        for name in ['climatology_bounds', 'climatology_bnds',
-                     'climo_bounds', 'climo_bnds']:
+        for name in [
+            "climatology_bounds",
+            "climatology_bnds",
+            "climo_bounds",
+            "climo_bnds",
+        ]:
             if name in self.variables:
                 return name
 
@@ -1252,9 +1285,8 @@ class CFDataset(Dataset):
             uses relatively short multi-year means.
             """
             return time_bounds.size > 0 and all(
-                time_to_seconds(end_time, scale) -
-                time_to_seconds(start_time, scale) >=
-                time_to_seconds(720, 'days')
+                time_to_seconds(end_time, scale) - time_to_seconds(start_time, scale)
+                >= time_to_seconds(720, "days")
                 for start_time, end_time in time_bounds[:]
             )
 
@@ -1262,7 +1294,7 @@ class CFDataset(Dataset):
         # identifying an existing variable AND that time bounds variable
         # brackets multi-year periods (corresponding to the climatological
         # averaging)
-        if hasattr(time_var, 'bounds'):
+        if hasattr(time_var, "bounds"):
             scale = time_scale(time_var)
             time_bounds_name = time_var.bounds
             try:
@@ -1276,7 +1308,7 @@ class CFDataset(Dataset):
         # (but not identified by time:bounds) AND that time bounds variable
         # brackets multi-year periods (corresponding to the climatological
         # averaging)
-        for time_bounds_name in ['time_bounds', 'time_bnds']:
+        for time_bounds_name in ["time_bounds", "time_bnds"]:
             scale = time_scale(time_var)
             if time_bounds_name in self.variables:
                 time_bounds = self.variables[time_bounds_name]
@@ -1291,13 +1323,15 @@ class CFDataset(Dataset):
         """Return the values of the climatology bounds variable
         as a numpy array of numeric values (not datetimes)"""
         if not self.is_multi_year_mean:
-            raise ValueError('climatology bounds are defined only for files'
-                             'containing multi-year means')
+            raise ValueError(
+                "climatology bounds are defined only for files"
+                "containing multi-year means"
+            )
         if self.climatology_bounds_var_name is None:
             raise ValueError(
-                'No climatology bounds variable is detectable in this file.')
-        climatology_bounds_var = \
-            self.variables[self.climatology_bounds_var_name]
+                "No climatology bounds variable is detectable in this file."
+            )
+        climatology_bounds_var = self.variables[self.climatology_bounds_var_name]
         return climatology_bounds_var[...]
 
     def time_bounds_extrema(self, nominal=True, closed=True):
@@ -1357,8 +1391,7 @@ class CFDataset(Dataset):
 
         extrema = (bounds_values[0, 0], bounds_values[-1, 1])
 
-        if nominal and \
-                self.is_multi_year_mean and self.time_resolution == 'seasonal':
+        if nominal and self.is_multi_year_mean and self.time_resolution == "seasonal":
             # Seasonal climo bounds are a month back of the nominal averaging
             # period. Add it back in.
 
@@ -1368,10 +1401,10 @@ class CFDataset(Dataset):
                 add a month, and convert back.
                 """
                 return date2num(
-                    to_datetime(num2date(num, units, calendar)) +
-                    relativedelta(months=1),
+                    to_datetime(num2date(num, units, calendar))
+                    + relativedelta(months=1),
                     units,
-                    calendar
+                    calendar,
                 )
 
             extrema = tuple(add_1_month(e) for e in extrema)
@@ -1406,11 +1439,12 @@ class CFDataset(Dataset):
     # Variables - for DSG files
 
     def _check_dsg_sampling_geometry(self, what):
-        if self.sampling_geometry != 'dsg.timeSeries':
+        if self.sampling_geometry != "dsg.timeSeries":
             raise CFValueError(
-                'A(n) {} is defined only for files with '
-                'discrete sampling geometry. This file has a sampling'
-                'geometry type of {}'.format(what, self.sampling_geometry))
+                "A(n) {} is defined only for files with "
+                "discrete sampling geometry. This file has a sampling"
+                "geometry type of {}".format(what, self.sampling_geometry)
+            )
 
     def coordinate_vars(self, var_name):
         """Return list of coordinate variables (instance variables) associated
@@ -1418,7 +1452,7 @@ class CFDataset(Dataset):
 
         Valid only for DSG files.
         """
-        self._check_dsg_sampling_geometry('coordinate variable')
+        self._check_dsg_sampling_geometry("coordinate variable")
         variable = self.variables[var_name]
         return [self.variables[name] for name in variable.coordinates.split()]
 
@@ -1428,10 +1462,10 @@ class CFDataset(Dataset):
 
         Valid only for DSG files.
         """
-        self._check_dsg_sampling_geometry('instance dimension')
+        self._check_dsg_sampling_geometry("instance dimension")
         return self.dimensions[self.coordinate_vars(var_name)[0].dimensions[0]]
 
-    def id_instance_var(self, var_name, cf_role='timeseries_id'):
+    def id_instance_var(self, var_name, cf_role="timeseries_id"):
         """Return the instance variable associated with the named
         variable in this file with attribute cf_role equal to specified cf_role.
 
@@ -1440,16 +1474,18 @@ class CFDataset(Dataset):
 
         Valid only for DSG files.
         """
-        self._check_dsg_sampling_geometry('instance variable')
+        self._check_dsg_sampling_geometry("instance variable")
         try:
             return next(
-                c for c in self.coordinate_vars(var_name)
-                if getattr(c, 'cf_role', None) == cf_role
+                c
+                for c in self.coordinate_vars(var_name)
+                if getattr(c, "cf_role", None) == cf_role
             )
         except StopIteration:
             raise CFValueError(
-                'No coordinate of variable {} in this file has attribute '
-                'cf_role with value {}'.format(var_name, cf_role))
+                "No coordinate of variable {} in this file has attribute "
+                "cf_role with value {}".format(var_name, cf_role)
+            )
 
     def spatial_instance_var(self, var_name, axis):
         """Return the spatial instance variable associated with the named
@@ -1460,28 +1496,28 @@ class CFDataset(Dataset):
 
         Valid only for DSG files.
         """
-        self._check_dsg_sampling_geometry('instance variable')
+        self._check_dsg_sampling_geometry("instance variable")
         axis_to_coord_names = {
-            'X': ['lon', 'longitude'],
-            'Y': ['lat', 'latitude'],
+            "X": ["lon", "longitude"],
+            "Y": ["lat", "latitude"],
         }
         try:
             coord_names = axis_to_coord_names[axis.upper()]
         except KeyError:
             raise CFValueError(
-                'axis arg must be one of {}, but was {}'
-                .format(axis_to_coord_names.keys(), axis)
+                "axis arg must be one of {}, but was {}".format(
+                    axis_to_coord_names.keys(), axis
+                )
             )
         try:
             return next(
-                c for c in self.coordinate_vars(var_name)
-                if c.name in coord_names
+                c for c in self.coordinate_vars(var_name) if c.name in coord_names
             )
         except StopIteration:
             raise CFValueError(
-                'No coordinate of variable {} in this file has name in the'
-                'expected list of {}-axis names {}'
-                .format(var_name, axis, coord_names))
+                "No coordinate of variable {} in this file has name in the"
+                "expected list of {}-axis names {}".format(var_name, axis, coord_names)
+            )
 
     ###########################################################################
     # Variables - spatial
@@ -1491,22 +1527,20 @@ class CFDataset(Dataset):
         """The latitude variable (netCDF4.Variable) in this file"""
         axes = self.axes_dim()
         try:
-            return self.variables[axes['Y']]
+            return self.variables[axes["Y"]]
         except KeyError:
-            raise CFValueError(
-                'No axis is attributed with latitude information')
+            raise CFValueError("No axis is attributed with latitude information")
 
     @property
     def lon_var(self):
         """The longitude variable (netCDF4.Variable) in this file"""
         axes = self.axes_dim()
         try:
-            return self.variables[axes['X']]
+            return self.variables[axes["X"]]
         except KeyError:
-            raise CFValueError(
-                'No axis is attributed with longitude information')
+            raise CFValueError("No axis is attributed with longitude information")
 
-    def proj4_string(self, var_name, default=None, ellps='WGS84'):
+    def proj4_string(self, var_name, default=None, ellps="WGS84"):
         """
         Return a PROJ.4 definition string for the specified variable, based
         on the `CF Convention standard projection definition attributes
@@ -1542,20 +1576,19 @@ class CFDataset(Dataset):
             Return PROJ.4 definition string for a polar stereographic
             projection.
             """
-            lat_ts = getattr_cf_error(var, 'standard_parallel')
-            lat_0 = getattr_cf_error(var, 'latitude_of_projection_origin')
-            lon_0 = getattr_cf_error(var, 'straight_vertical_longitude_from_pole')
-            x_0 = getattr_cf_error(var, 'false_easting')
-            y_0 = getattr_cf_error(var, 'false_northing')
-            if x_0 == '':
+            lat_ts = getattr_cf_error(var, "standard_parallel")
+            lat_0 = getattr_cf_error(var, "latitude_of_projection_origin")
+            lon_0 = getattr_cf_error(var, "straight_vertical_longitude_from_pole")
+            x_0 = getattr_cf_error(var, "false_easting")
+            y_0 = getattr_cf_error(var, "false_northing")
+            if x_0 == "":
                 x_0 = 0
-            if y_0 == '':
+            if y_0 == "":
                 y_0 = 0
             return (
-                '+proj=stere +ellps={ellps} '
-                '+lat_ts={lat_ts} +lat_0={lat_0} +lon_0={lon_0} '
-                '+x_0={x_0} +y_0={y_0} +k_0=1'
-                    .format(**locals())
+                "+proj=stere +ellps={ellps} "
+                "+lat_ts={lat_ts} +lat_0={lat_0} +lon_0={lon_0} "
+                "+x_0={x_0} +y_0={y_0} +k_0=1".format(**locals())
             )
 
         def rotated_latitude_longitude(var):
@@ -1577,9 +1610,8 @@ class CFDataset(Dataset):
             # projection by feeding the values directly in as o_lon_p and
             # o_lat_p; this is to generate a normal, forward projection.
             return (
-                '+proj=ob_tran +o_proj=longlat +lon_0={lon_0} +o_lat_p={lat_0} '
-                '+a=1 +to_meter=0.0174532925199 +no_defs'
-                    .format(**locals())
+                "+proj=ob_tran +o_proj=longlat +lon_0={lon_0} +o_lat_p={lat_0} "
+                "+a=1 +to_meter=0.0174532925199 +no_defs".format(**locals())
             )
 
         def lambert_conformal_conic(var, ellps=ellps):
@@ -1587,28 +1619,27 @@ class CFDataset(Dataset):
             Return PROJ.4 definition string for a Lambert conformal conic
             projection.
             """
-            lat_ts = getattr_cf_error(var, 'standard_parallel')
+            lat_ts = getattr_cf_error(var, "standard_parallel")
             if isinstance(lat_ts, np.ndarray):
                 if lat_ts.size != 2:
                     raise CFValueError(
-                        'List of standard_parallel values must have length '
-                        'exactly 2')
+                        "List of standard_parallel values must have length " "exactly 2"
+                    )
                 lat_1, lat_2 = lat_ts
             else:
                 lat_1 = lat_ts
                 # TODO: Is it really legit to have component '+lat2=' in
                 # PROJ.4 defn string?
-                lat_2 = ''
-            lat_0 = getattr_cf_error(var, 'latitude_of_projection_origin')
-            lon_0 = getattr_cf_error(var, 'longitude_of_central_meridian')
-            x_0 = getattr_cf_error(var, 'false_easting')
-            y_0 = getattr_cf_error(var, 'false_northing')
+                lat_2 = ""
+            lat_0 = getattr_cf_error(var, "latitude_of_projection_origin")
+            lon_0 = getattr_cf_error(var, "longitude_of_central_meridian")
+            x_0 = getattr_cf_error(var, "false_easting")
+            y_0 = getattr_cf_error(var, "false_northing")
 
             return (
-                '+proj=lcc +ellps={ellps} '
-                '+lat_0={lat_0} +lat_1={lat_1} +lat_2={lat_2} '
-                '+lon_0={lon_0} +y_0={y_0} +x_0={x_0}'
-                    .format(**locals())
+                "+proj=lcc +ellps={ellps} "
+                "+lat_0={lat_0} +lat_1={lat_1} +lat_2={lat_2} "
+                "+lon_0={lon_0} +y_0={y_0} +x_0={x_0}".format(**locals())
             )
 
         def transverse_mercator(var, ellps=ellps):
@@ -1616,17 +1647,16 @@ class CFDataset(Dataset):
             Return PROJ.4 definition string for a transverse Mercator
             projection.
             """
-            lat_0 = getattr_cf_error(var, 'latitude_of_projection_origin')
-            lon_0 = getattr_cf_error(var, 'longitude_of_central_meridian')
-            k_0 = getattr_cf_error(var, 'scale_factor_at_central_meridian')
-            x_0 = getattr_cf_error(var, 'false_easting')
-            y_0 = getattr_cf_error(var, 'false_northing')
+            lat_0 = getattr_cf_error(var, "latitude_of_projection_origin")
+            lon_0 = getattr_cf_error(var, "longitude_of_central_meridian")
+            k_0 = getattr_cf_error(var, "scale_factor_at_central_meridian")
+            x_0 = getattr_cf_error(var, "false_easting")
+            y_0 = getattr_cf_error(var, "false_northing")
 
             return (
-                '+proj=tmerc +ellps={ellps} '
-                '+lat_0={lat_0} +lon_0={lon_0} '
-                '+k_0={k_0} +x_0={x_0} +y_0={y_0}'
-                    .format(**locals())
+                "+proj=tmerc +ellps={ellps} "
+                "+lat_0={lat_0} +lon_0={lon_0} "
+                "+k_0={k_0} +x_0={x_0} +y_0={y_0}".format(**locals())
             )
 
         def latitude_longitude(var):
@@ -1637,29 +1667,28 @@ class CFDataset(Dataset):
             parts = ["+proj=longlat"]
 
             for template, attr_name in (
-                    ('+a={}', 'semi_major_axis'),
-                    ('+rf={}', 'inverse_flattening'),
-                    ('+b={}', 'semi_minor_axis'),
-                    ('+lon_0={}', 'longitude_of_prime_meridian'),
+                ("+a={}", "semi_major_axis"),
+                ("+rf={}", "inverse_flattening"),
+                ("+b={}", "semi_minor_axis"),
+                ("+lon_0={}", "longitude_of_prime_meridian"),
             ):
                 try:
                     parts.append(template.format(getattr(var, attr_name)))
                 except AttributeError:
                     pass
 
-            return ' '.join(parts)
+            return " ".join(parts)
 
         try:
-            grid_mapping_var_name = getattr(
-                self.variables[var_name], 'grid_mapping')
+            grid_mapping_var_name = getattr(self.variables[var_name], "grid_mapping")
         except AttributeError:
             if default is not None:
                 return default
             raise CFAttributeError(
-                'No coordinate reference system metadata found in file.')
+                "No coordinate reference system metadata found in file."
+            )
         grid_mapping_var = self.variables[grid_mapping_var_name]
-        grid_mapping_name = getattr_cf_error(
-            grid_mapping_var, 'grid_mapping_name')
+        grid_mapping_name = getattr_cf_error(grid_mapping_var, "grid_mapping_name")
         try:
             # Select the function that returns the desired PROJ.4 definition
             # string, and invoke it. Using ``locals()`` here is slightly fragile
@@ -1667,17 +1696,13 @@ class CFDataset(Dataset):
             # but it is handy and concise.
             return locals()[grid_mapping_name](grid_mapping_var)
         except KeyError:
-            raise CFValueError(
-                "'{}' is not a recognized value for grid_mapping_name"
-            )
+            raise CFValueError("'{}' is not a recognized value for grid_mapping_name")
 
     ###########################################################################
     # Standard file identifiers
 
     def _cmor_type_filename_components(
-            self,
-            tres_to_mip_table=standard_tres_to_mip_table,
-            **override
+        self, tres_to_mip_table=standard_tres_to_mip_table, **override
     ):
         """Return a dict containing appropriate arguments to function
         ``cmor_type_filename`` (q.v.), with content built from this file's
@@ -1692,22 +1717,21 @@ class CFDataset(Dataset):
         """
 
         # File content-independent components
-        components = { 'variable': '+'.join(sorted(self.dependent_varnames()))}
+        components = {"variable": "+".join(sorted(self.dependent_varnames()))}
 
         if not self.is_time_invariant:
             components["time_range"] = _cmor_formatted_time_range(
                 *to_datetime(
                     num2date(
                         self.nominal_time_span,
-                        self.time_var.units, self.time_var.calendar
+                        self.time_var.units,
+                        self.time_var.calendar,
                     )
                 )
             )
 
         if self.is_multi_year:
-            components.update(
-                frequency=self.frequency
-            )
+            components.update(frequency=self.frequency)
         else:
             # Regarding how the 'mip_table' component is defined here,
             # see the discussion in section titled "MIP table / table_id" in
@@ -1716,8 +1740,8 @@ class CFDataset(Dataset):
             # ``table_id`` because it is too limited for our needs. Instead we
             # map the file's time resolution to a value.
             components.update(
-                mip_table=tres_to_mip_table and
-                          tres_to_mip_table.get(self.time_resolution, None)
+                mip_table=tres_to_mip_table
+                and tres_to_mip_table.get(self.time_resolution, None)
             )
 
         if self.is_gcm_derivative:
@@ -1735,33 +1759,33 @@ class CFDataset(Dataset):
                     downscaling_method=self.method_id,
                     model=self.gcm.model_id,
                     experiment=_replace_commas(self.gcm.experiment_id),
-                    geo_info=getattr(self, 'domain', None)
+                    geo_info=getattr(self, "domain", None),
                 )
             elif self.is_hydromodel_dgcm_output:
                 components.update(
                     hydromodel_method=_replace_commas(self.method_id),
                     model=self.gcm.model_id,
                     experiment=_replace_commas(self.gcm.experiment_id),
-                    geo_info=getattr(self, 'domain', None)
+                    geo_info=getattr(self, "domain", None),
                 )
             elif self.is_streamflow_model_dgcm_output:
                 components.update(
                     model=self.gcm.model_id,
                     experiment=_replace_commas(self.gcm.experiment_id),
-                    geo_info=getattr(self, 'domain', None)
+                    geo_info=getattr(self, "domain", None),
                 )
             elif self.is_climdex_output:
                 components.update(
                     downscaling_method=self.downscaling__method_id,
                     model=self.gcm.model_id,
                     experiment=_replace_commas(self.gcm.experiment_id),
-                    geo_info=getattr(self, 'domain', None)
+                    geo_info=getattr(self, "domain", None),
                 )
         elif self.is_hydromodel_iobs_output:
             components.update(
                 hydromodel_method=_replace_commas(self.method_id),
                 obs_dataset_id=self.observations__dataset_id,
-                geo_info=getattr(self, 'domain', None)
+                geo_info=getattr(self, "domain", None),
             )
 
         elif self.is_other:
@@ -1770,7 +1794,7 @@ class CFDataset(Dataset):
             components.update(
                 model=self.metadata.model,
                 experiment=self.metadata.experiment,
-                geo_info=getattr(self, 'domain', None)
+                geo_info=getattr(self, "domain", None),
             )
 
         # Override with supplied args
@@ -1783,7 +1807,7 @@ class CFDataset(Dataset):
         """A CMOR standard filename for this file, based on its metadata
         contents."""
         return cmor_type_filename(
-            extension='.nc', **self._cmor_type_filename_components()
+            extension=".nc", **self._cmor_type_filename_components()
         )
 
     @property
@@ -1792,10 +1816,10 @@ class CFDataset(Dataset):
         unique_id = cmor_type_filename(**self._cmor_type_filename_components())
 
         dim_axes = set(self.dim_axes_from_names().values())
-        if not (dim_axes <= {'X', 'Y', 'Z', 'T'}):
-            unique_id += "_dim" + ''.join(sorted(dim_axes))
+        if not (dim_axes <= {"X", "Y", "Z", "T"}):
+            unique_id += "_dim" + "".join(sorted(dim_axes))
 
-        return unique_id.replace('+', '-')  # In original code, but why?
+        return unique_id.replace("+", "-")  # In original code, but why?
 
     ###########################################################################
     # Climatology-specific methods
@@ -1812,7 +1836,7 @@ class CFDataset(Dataset):
             To verify that data is present to calculate the climatology,
             a timestamp during or after this interval is needed (>= the date
             returned by this function)."""
-            if self.time_resolution == 'seasonal' and e.month == 12:
+            if self.time_resolution == "seasonal" and e.month == 12:
                 # PCIC's definition of a "seasonal" climatology that runs from
                 # year N to year M includes the winter spanning years N-1 to N,
                 # but not the winter spanning years M to M+1.
@@ -1820,8 +1844,9 @@ class CFDataset(Dataset):
                 # falls within the span of years N-M designated by the climatology
                 # interval, we don't require data for this month.
                 # The final required timestamp is Autumn of year M.
-                return truncate_to_resolution(e - relativedelta(months=1),
-                                              self.time_resolution)
+                return truncate_to_resolution(
+                    e - relativedelta(months=1), self.time_resolution
+                )
             else:
                 return truncate_to_resolution(e, self.time_resolution)
 
@@ -1831,8 +1856,10 @@ class CFDataset(Dataset):
         calendar = time_var.calendar
         return {
             k: (climo_start_date, climo_end_date)
-            for k, (climo_start_date, climo_end_date)
-            in standard_climo_periods(calendar).items()
-            if s_time <= date2num(climo_start_date, units, calendar) and
-            date2num(last_required_climo_timestamp(climo_end_date), units, calendar) <= e_time
+            for k, (climo_start_date, climo_end_date) in standard_climo_periods(
+                calendar
+            ).items()
+            if s_time <= date2num(climo_start_date, units, calendar)
+            and date2num(last_required_climo_timestamp(climo_end_date), units, calendar)
+            <= e_time
         }
