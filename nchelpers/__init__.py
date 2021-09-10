@@ -472,7 +472,7 @@ class CFDataset(Dataset):
                     "but no such attribute exists".format(name)
                 )
 
-            ms = self.__get_metadata_standard__()
+            ms = self._get_metadata_standard()
             aliases = self._aliases_by_metadata_standard[ms]
 
             if alias not in aliases.keys():
@@ -494,7 +494,7 @@ class CFDataset(Dataset):
             except:
                 raise missing_attribute(attr)
 
-        def __get_metadata_standard__(self):
+        def _get_metadata_standard(self):
             """heuristic function that attempts to determine what
                metadata standard (CMIP3, CMIP5, CMIP6, non-GCM)
                this dataset is using. Usually this is the project_id
