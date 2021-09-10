@@ -384,7 +384,7 @@ class CFDataset(Dataset):
         - A ``CFDataset`` can have metadata attributes named according to CMIP3
           or CMIP5 standards, or non-CMIP standards, presently grouped under the
           label 'other', depending on the file's origin (which is indicated
-          by ``project_id``).
+          by ``project_id`` or ``mip_era``).
         - We want a common interface, i.e., common names, for a selected set
           of those differently named attributes.
         - We must avoid shadowing existing properties and methods on a
@@ -401,7 +401,7 @@ class CFDataset(Dataset):
         def __init__(self, dataset):
             self.dataset = dataset
 
-        _aliases_by_project_id = {
+        _aliases_by_metadata_standard = {
             'CMIP3': {
                 # Original aliases - some mangle the terminology somewhat,
                 'project': 'project_id',
@@ -432,7 +432,7 @@ class CFDataset(Dataset):
             },
 
             'CMIP6': {
-                'project': 'project_id',
+                'project': 'mip_era',
                 'initialization_method': 'gcm.initialization_index',
                 'physics_version': 'gcm.physics_index',
                 'realization': 'gcm.realization_index',
@@ -472,23 +472,13 @@ class CFDataset(Dataset):
                     "but no such attribute exists".format(name)
                 )
 
-            try:
-                project_id = self.dataset.project_id
-            except AttributeError:
-                raise missing_attribute('project_id')
-
-            if project_id not in self._aliases_by_project_id.keys():
-                raise CFValueError(
-                    "Expected file to have project id in {}, found '{}'"
-                    .format(self._aliases_by_project_id.keys(), project_id)
-                )
-
-            aliases = self._aliases_by_project_id[project_id]
+            ms = self.__get_metadata_standard__()
+            aliases = self._aliases_by_metadata_standard[ms]
 
             if alias not in aliases.keys():
                 raise CFAttributeError(
-                    "No such unified attribute: '{}' for a project_id of '{}"
-                    .format(alias, project_id)
+                    "No such unified attribute: '{}' for a metadata standard of '{}"
+                    .format(alias, ms)
                 )
 
             def getdottedattr(obj, dotted_attr):
@@ -503,6 +493,27 @@ class CFDataset(Dataset):
                 return getdottedattr(self.dataset, attr)
             except:
                 raise missing_attribute(attr)
+
+        def __get_metadata_standard__(self):
+            """heuristic function that attempts to determine what
+               metadata standard (CMIP3, CMIP5, CMIP6, non-GCM)
+               this dataset is using. Usually this is the project_id
+               attribute, but for CMIP6, it is the mip_era attribute"""
+            print("inside get metadata standard")
+            try:
+                project_id = self.dataset.project_id
+                if project_id in ["CMIP3", "CMIP5", "other"]:
+                    return project_id
+            except AttributeError:
+                pass
+            try:
+                mip_era = self.dataset.mip_era
+                if mip_era == "CMIP6":
+                    return mip_era
+                else: 
+                    raise CFValueError("Unexpected value for mip_era: {}".format(mip_era))
+            except AttributeError:
+                raise CFValueError("Unable to determine dataset standard. Check project_id and mip_era attributes")
 
     @property
     def metadata(self):
