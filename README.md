@@ -178,9 +178,3 @@ pip install .
 ```
 
 Tests can be run with `pytest`.
-
-#### A Note on the PDP
-The PDP's metadata database has not been updated to support discrete structured
-geometry netCDFs. When indexing data for the PDP, you may need to use an older
-version of this library. For more information,
-[see this Confluence page](https://pcic.uvic.ca/confluence/display/CSG/Preparing+Datasets+For+The+PDP).
