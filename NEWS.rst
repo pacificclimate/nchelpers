@@ -1,5 +1,15 @@
 News / Release Notes
 ====================
+5.5.7
+------
+*Release Date: 25-Sep-2021*
+
+* Parse datasets whose metadata attributes follow the CMIP6 standard (in addition to already-supported CMIP5 and CMIP3)
+* Fix a bug that prevented generating unique IDs for hydromodel datasets driven by observations
+* Update netCDF4 version to >= 1.5.4 in response to warnings about a deprecated numpy method
+* Use github actions for CI testing
+* clearer separation in roles between setup.py and requirements.txt
+
 
 5.5.6
 -----
