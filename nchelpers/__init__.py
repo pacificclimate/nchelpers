@@ -510,7 +510,6 @@ class CFDataset(Dataset):
             metadata standard (CMIP3, CMIP5, CMIP6, non-GCM)
             this dataset is using. Usually this is the project_id
             attribute, but for CMIP6, it is the mip_era attribute"""
-            print("inside get metadata standard")
             try:
                 project_id = self.dataset.project_id
                 if project_id in ["CMIP3", "CMIP5", "other"]:
