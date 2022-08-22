@@ -1,5 +1,11 @@
 News / Release Notes
 ====================
+5.5.9
+-----
+*Release Date: 22-Aug-2022*
+
+* Remove an unneccesary and distracting print statement
+
 5.5.8
 ------
 *Release Date: 25-Sep-2021*
