@@ -725,8 +725,8 @@ class CFDataset(Dataset):
         # Additional non-strict heuristics begin here
 
         # Heuristic: Time variable has "suspicious" length:
-        # 1, 4, 12, 365, 5, 13, 16, 17 (yearly, seasonal, monthly, daily, and
-        # various concatenations thereof)
+        # 1, 4, 12, 365, 360, 5, 13, 16, 17 (yearly, seasonal, monthly, daily, 
+        # daily with a 360 day calendar, and various concatenations thereof)
         # AND time variable has likely values (mid-month, mid-season, mid-year)
 
         def check_monthly(time_steps):
@@ -755,6 +755,7 @@ class CFDataset(Dataset):
                 4: (check_seasonal,),
                 12: (check_monthly,),
                 365: (check_daily,),
+                360: (check_daily,),
                 5: (check_seasonal, check_yearly),
                 13: (check_monthly, check_yearly),
                 16: (check_monthly, check_seasonal),
@@ -1183,7 +1184,8 @@ class CFDataset(Dataset):
                 5: "seasonal,yearly",
                 13: "monthly,yearly",
                 17: "monthly,seasonal,yearly",
-                365: "daily"
+                360: "daily",
+                365: "daily",
             }.get(self.time_var.size, "other")
         if self.is_time_invariant:
             return "fixed"
