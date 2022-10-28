@@ -1,5 +1,13 @@
 News / Release Notes
 ====================
+5.5.10
+-----
+*Release Date: 27-Oct-2022*
+
+* Add support for daily-resolution climatologies
+* During CI actions, update package lists before install system dependencies
+
+
 5.5.9
 -----
 *Release Date: 22-Aug-2022*
