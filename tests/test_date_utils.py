@@ -1,5 +1,6 @@
 from datetime import datetime
 import collections
+import unittest
 
 from pytest import mark
 from netCDF4 import num2date
@@ -8,7 +9,12 @@ from nchelpers.date_utils import \
     resolution_standard_name, \
     jday_360_to_remapped_month_day, \
     to_datetime, \
-    truncate_to_resolution
+    truncate_to_resolution, \
+    time_to_seconds, \
+    seconds_to_time
+
+from nchelpers.exceptions import \
+    CFValueError
 
 
 @mark.parametrize('arg, result', [
@@ -96,3 +102,17 @@ def test_to_datetime_360(jday_360, month, day):
     ])
 def test_truncate_to_resolution(date, resolution, expected):
     assert(truncate_to_resolution(date, resolution)) == expected
+
+class CFValueErrorTestCases(unittest.TestCase):
+    def test_time_to_seconds(self):
+        with self.assertRaises(CFValueError):
+            time_to_seconds(604800, 'weeks')
+
+    def test_seconds_to_time(self):
+        with self.assertRaises(CFValueError):
+            seconds_to_time(604800, 'weeks')
+
+class ValueErrorTestCases(unittest.TestCase):
+    def test_truncate_to_resolution(self):
+        with self.assertRaises(ValueError):
+            truncate_to_resolution('unimportant_date', {})
