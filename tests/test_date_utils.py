@@ -1,5 +1,7 @@
 from datetime import datetime
 import collections
+from nchelpers.exceptions import CFValueError
+import pytest
 
 from pytest import mark
 from netCDF4 import num2date
@@ -8,7 +10,8 @@ from nchelpers.date_utils import \
     resolution_standard_name, \
     jday_360_to_remapped_month_day, \
     to_datetime, \
-    truncate_to_resolution
+    truncate_to_resolution, \
+    time_scale
 
 
 @mark.parametrize('arg, result', [
@@ -96,3 +99,19 @@ def test_to_datetime_360(jday_360, month, day):
     ])
 def test_truncate_to_resolution(date, resolution, expected):
     assert(truncate_to_resolution(date, resolution)) == expected
+
+def test_time_scale_error_messages():
+    with pytest.raises(AttributeError):
+        time_scale('baby goats')
+        
+def test_time_scale_error2():
+    class BabyGoats:
+        def __init__(self):
+            self.units = 'baby goats' 
+    with pytest.raises(CFValueError):
+        time_scale(BabyGoats())
+        
+def test_hours_conversion_for_resolution_standard_name():
+    seconds = 3600
+    assert resolution_standard_name(seconds) == '1-hourly'
+        
