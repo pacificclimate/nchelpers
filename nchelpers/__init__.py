@@ -1047,7 +1047,7 @@ class CFDataset(Dataset):
         """
         if isinstance(dim_names, six.string_types):
             dim_names = {dim_names}
-        elif isinstance(dim_names, collections.Iterable):
+        elif isinstance(dim_names, collections.abc.Iterable):
             dim_names = {d for d in dim_names if isinstance(d, six.string_types)}
         else:
             raise ValueError(

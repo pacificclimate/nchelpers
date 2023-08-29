@@ -117,7 +117,7 @@ def to_datetime(value):
     """
     # TODO: Convert time values in case of 360_day calendar?
     # See https://github.com/pacificclimate/modelmeta/blob/master/db/index_netcdf.r#L468-L479
-    if isinstance(value, collections.Iterable):
+    if isinstance(value, collections.abc.Iterable):
         return (to_datetime(v) for v in value)
 
     if isinstance(value, (datetime, date)):
