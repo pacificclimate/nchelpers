@@ -1110,7 +1110,8 @@ class CFDataset(Dataset):
         :param var_name: (str) name of variable
         :return (tuple) (min, max) minimum and maximum values
         """
-        # TODO: What about fill values?
+        # Temporarily mask fill values
+        self.set_auto_mask(True)
         variable = self.variables[var_name]
         range_min = float("inf")
         range_max = float("-inf")
@@ -1118,6 +1119,7 @@ class CFDataset(Dataset):
         for chunk in chunks(variable, chunk_shape):
             range_min = min(range_min, np.nanmin(chunk))
             range_max = max(range_max, np.nanmax(chunk))
+        self.set_auto_mask(False)
         return range_min, range_max
 
     ###########################################################################
