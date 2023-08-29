@@ -798,6 +798,15 @@ def test_get_var_bounds_and_values(tiny_dataset, var_name):
 def test_variable_range(tiny_dataset, var_name, expected):
     assert tiny_dataset.var_range(var_name, chunksize=2) == approx(expected)
 
+@mark.slow
+@mark.parametrize('dataset, var_name, fill_value, expected', [
+    ('prism_pr_small', 'pr', -9999., (45.703, 7346.324)),
+    ('tiny_gridded_obs_missing_data', 'tasmax', -32768., (-28.9, -18.18)),
+], indirect=['dataset'])
+def test_variable_range_with_missing_data(dataset, var_name, fill_value, expected):
+    assert dataset.variables[var_name]._FillValue == fill_value
+    assert fill_value in dataset.variables[var_name][:]
+    assert dataset.var_range(var_name, chunksize=2) == approx(expected)
 
 @mark.parametrize('tiny_dataset, expected', [
     ('gcm', {'time', 'lon', 'lat', 'nb2'}),
