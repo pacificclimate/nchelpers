@@ -231,7 +231,7 @@ class CFDataset(Dataset):
 
     Some of this class replaces the functionality of helper functions defined
     in pacificclimate/modelmeta. The following list maps those functions to
-    \properties/methods of this class.
+    properties/methods of this class.
 
     get_file_metadata -> metadata.<global attribute>
         - <global attribute> is the unified name for actual CF standard global
