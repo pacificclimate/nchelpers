@@ -66,7 +66,7 @@ def test_jday_360_to_remapped_date(jday_360, month, day):
     (num2date(60, 'days since 1999-12-30', '360_day'), datetime(2000, 3, 1)),
 ])
 def test_to_datetime(arg, expected):
-    if isinstance(arg, collections.Iterable):
+    if isinstance(arg, collections.abc.Iterable):
         assert list(to_datetime(arg)) == list(expected)
     else:
         assert to_datetime(arg) == expected
