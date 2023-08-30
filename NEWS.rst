@@ -1,5 +1,12 @@
 News / Release Notes
 ====================
+5.5.11
+-----
+*Release Date: 30-Aug-2023*
+
+* Fix issue where fill values were used in var_range calculations
+* Update Python versions in CI actions
+
 5.5.10
 -----
 *Release Date: 27-Oct-2022*
