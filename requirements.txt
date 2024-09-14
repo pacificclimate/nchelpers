@@ -1,4 +1,5 @@
 python-dateutil
+cftime==1.6.3
 netCDF4==1.7.1
 cached-property
 pytest
