@@ -2,7 +2,7 @@ import sys
 import os
 
 from pytest import fixture
-from pkg_resources import resource_filename
+from importlib.resources import files
 from nchelpers import CFDataset
 
 from .helpers.nc_file_specs import create_fake_nc_dataset
@@ -40,8 +40,8 @@ def dataset(request):
 
     If you're testing with tiny_ datasets, use the fixture `tiny_dataset`.
     """
-    filename = 'data/{}.nc'.format(request.param)
-    return CFDataset(resource_filename('nchelpers', filename))
+    filename = files("nchelpers").joinpath("data", f"{request.param}.nc")
+    return CFDataset(str(filename))
 
 
 @fixture
@@ -53,8 +53,8 @@ def tiny_dataset(request):
 
     This fixture should be invoked with indirection.
     """
-    filename = 'data/tiny_{}.nc'.format(request.param)
-    return CFDataset(resource_filename('nchelpers', filename))
+    filename = files("nchelpers").joinpath("data", f"tiny_{request.param}.nc")
+    return CFDataset(str(filename))
 
 
 @fixture(scope='function')

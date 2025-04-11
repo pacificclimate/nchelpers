@@ -4,35 +4,45 @@ on: push
 
 jobs:
   test:
-
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         python-version:
-          - "3.8"
-          - "3.9"
           - "3.10"
           - "3.11"
+          - "3.12"
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      env:
-        PIP_INDEX_URL: https://pypi.pacificclimate.org/simple
-      run: |
-        sudo apt-get update
-        sudo apt-get install libhdf5-serial-dev libnetcdf-dev
-        pip install -r requirements.txt
-        pip install .
-    - name: Test with pytest (full)
-      if: github.ref == 'refs/heads/master'
-      run: |
-        py.test -v tests
-    - name: Test with pytest (fast)
-      if: github.ref != 'refs/heads/master'
-      run: |
-        py.test -m "not slow" -v tests
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        env:
+          PIP_INDEX_URL: https://pypi.pacificclimate.org/simple
+        run: |
+          sudo apt-get update
+          sudo apt-get install libhdf5-serial-dev libnetcdf-dev
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry --version
+
+      - name: Install dependencies with Poetry
+        run: |
+          poetry install
+
+      - name: Test with pytest (full)
+        if: github.ref == 'refs/heads/master'
+        run: |
+          poetry run pytest -v tests
+      - name: Test with pytest (fast)
+        if: github.ref != 'refs/heads/master'
+        run: |
+          poetry run pytest -m "not slow" -v tests
