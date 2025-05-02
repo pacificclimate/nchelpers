@@ -1,9 +1,15 @@
-[tool.poetry]
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
 name = "nchelpers"
 version = "5.5.11"
 description = "Helper classes and methods for Climate and Forecast NetCDF datasets"
-authors = ["Rod Glover <rglover@uvic.ca>"]
-license = "GPL-3.0"
+authors = [
+  { name = "Rod Glover", email = "rglover@uvic.ca" }
+]
+license = { text = "GPL-3.0" }
 readme = "README.md"
 keywords = [
   "netcdf",
@@ -20,37 +26,69 @@ classifiers = [
   "Intended Audience :: Science/Research",
   "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
   "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3.10",  
+  "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Scientific/Engineering",
   "Topic :: Database",
   "Topic :: Software Development :: Libraries :: Python Modules"
 ]
+requires-python = ">=3.10"
+dependencies = [
+  "python-dateutil",
+  "netCDF4>=1.5.4",
+  "cached-property",
+  "pytest"
+]
 
-[[tool.poetry.packages]]
-include = "nchelpers"
+[project.urls]
+homepage   = "http://www.pacificclimate.org/"
+repository = "https://github.com/pacificclimate/nchelpers"
 
-[[tool.poetry.include]]
-path = "nchelpers/data/*.nc"
-format = "wheel"
-
-[[tool.poetry.include]]
-path = "nchelpers/data/*.nc"
-format = "sdist"
 
 [[tool.poetry.source]]
 name = "pcic"
 url = "https://pypi.pacificclimate.org/simple/"
 priority = "primary"
 
-[tool.poetry.dependencies]
-python = "^3.12"
-python-dateutil = "*"
-netCDF4 = ">=1.5.4"
-cached-property = "*"
+[[tool.poetry.include]]
+path = "nchelpers/data/CanESM2-rcp85-tasmax-r1i1p1-2010-2039.nc"
+format = ["sdist", "wheel"]
 
-[tool.poetry.dev-dependencies]
-pytest = "*"
+[[tool.poetry.include]]
+path = "nchelpers/data/cgcm.nc"
+format = ["sdist", "wheel"]
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[[tool.poetry.include]]
+path = "nchelpers/data/prism_pr_small.nc"
+format = ["sdist", "wheel"]
+
+[[tool.poetry.include]]
+path = "nchelpers/data/tiny_gcm.nc"
+format = ["sdist", "wheel"]
+
+[[tool.poetry.include]]
+path = "nchelpers/data/tiny_downscaled.nc"
+format = ["sdist", "wheel"]
+
+[[tool.poetry.include]]
+path = "nchelpers/data/tiny_hydromodel_gcm.nc"
+format = ["sdist", "wheel"]
+
+[[tool.poetry.include]]
+path = "nchelpers/data/tiny_mClim_gcm.nc"
+format = ["sdist", "wheel"]
+
+[[tool.poetry.include]]
+path = "nchelpers/data/tiny_sClim_gcm.nc"
+format = ["sdist", "wheel"]
+
+[[tool.poetry.include]]
+path = "nchelpers/data/tiny_aClim_gcm.nc"
+format = ["sdist", "wheel"]
+
+[[tool.poetry.include]]
+path = "nchelpers/data/tiny_streamflow.nc"
+format = ["sdist", "wheel"]
+
