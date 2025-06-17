@@ -16,10 +16,12 @@ modify netCDF files, but all file-modifying procedures in the netcdf4.Dataset
 class are still available.
 
 ## Data chunking
+
 `iteration.py` contains generators for iterating over a netCDF file and loading
 on chunk at a time so that enormous files can be read without a `MemoryError`.
 
 ## PCIC Metadata Model
+
 PCIC has a [process-oriented metadata model](https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data).
 
 Data originates as either model output (simulated by a Global Climate Model
@@ -57,6 +59,7 @@ netCDF is, which processes were used to generate it, validating that required
 metadata is present, and navigating the metadata "tree" to find desired metadata.
 
 ## Data Supported
+
 Most of the time, this module will take care of the low level details related
 to handling various types of datasets. Data is usually cubes with a latitude,
 longitude, and time dimension. While it may have different origins and different
@@ -67,6 +70,7 @@ to accessing needed metadata.
 ### Supported Data Origins
 
 #### Model Output
+
 Model output is the majority of netCDF data used by PCIC. Model output data has
 latitude, longitude, and time dimensions and metadata attributes specifying the
 model, scenario, and run used to generate the data.
@@ -76,12 +80,13 @@ property of `True`. Data that is either model output or was created by processes
 that used model output has the `is_gcm_derivative` property of `True`.
 
 #### Observations
+
 Observation data is historical data that is derived from real world observations
 and then extrapolated to cover geographic or chronological gaps by an algorithmic
 process. (This module and the netCDF file format are not well suited for handling
 sparse, non-gridded observation data.)
 
-Note that, confusingly, observation data usually *does* have a `model_id` attribute:
+Note that, confusingly, observation data usually _does_ have a `model_id` attribute:
 typically this is the name of the algorithm used to extrapolate measurements to
 cover an entire grid. It is not a Global Climate Model, though, and simulation
 attributes relevant to GCMs, like `experiment`, will not be present.
@@ -94,6 +99,7 @@ Observation data has the `is_gridded_obs` property of `True`.
 ### Data-generating Processes
 
 #### Downscaling
+
 This process produces data with a higher spatial resolution, but otherwise
 similar to the input data. It is only run on model output data; observation data
 is already downscaled by the extrapolation process used to create it.
@@ -102,6 +108,7 @@ It will have the property `is_downscaled_output` of `True` and metadata
 specifying the downscaling algorithm (typically either BCCAQ, PRISM, or both).
 
 #### Climdex calculation
+
 This process takes model output and calculates [various derived statistics](https://www.climdex.org/)
 about it. The output data will have the same dimensions as the input data
 (lat, lon, time), but a different variable.
@@ -111,8 +118,9 @@ one of `is_climdex_gcm_output` or `is_climdex_ds_gcm_output` will be `True`
 as well, depending on whether the input dataset was downscaled or not.
 
 #### Hydrological Modeling
+
 Unlike Downscaling or Climdex calculation, hydrological modeling produces
-data that is *not* a cube with lat, lon, and time dimensions, and applications
+data that is _not_ a cube with lat, lon, and time dimensions, and applications
 that use this module to work with streamflow data will definitely need to
 check whether the data is streamflow and handle it seperately if so.
 
@@ -124,6 +132,7 @@ property.
 ### Supported Data Shapes
 
 #### Raster Timeseries
+
 The most common type of PCIC data is a raster timeseries. Data is stored in one or
 more data cubes with latitude, longitude, and time dimensions. This is the default and
 doesn't usually require explicit handling, but can be checked for if needed.
@@ -132,6 +141,7 @@ The `sampling_geometry` property will have the value `gridded` and the `time_inv
 property will be `False`.
 
 #### Climatologies
+
 A subset of raster timeseries; a climatology contains values that are averaged over a
 multi-year time period, typically 30 years. Climatologies may contain annual data
 (one timestamp), seasonal data (four timestamps), monthly data (12 timestamps) or
@@ -143,6 +153,7 @@ value is averaged.
 A climatology will return `True` on the `is_multi_year` property.
 
 #### Discrete Structured Geometries
+
 Discrete Structured Geometries have a time series of data associated with
 one or more specific points (like measuring stations), but not a full grid.
 The collection of individual points is the "instance" dimension; data is
@@ -155,6 +166,7 @@ A discrete structured geometry has a value other than `gridded` as its
 `sampling_geometry` property.
 
 #### Time Invariant Data
+
 Time invariant data is gridded data that describes characteristics that do not change
 over time, like elevation or soil type. Time Invariant Data is always observations;
 climate model output necessarily has a time component. It lacks a time dimension.
@@ -166,15 +178,12 @@ dataset.
 ## Building and Testing
 
 While this module is usually imported to some other project, it can be built and
-tested on its own for debugging or development.
+tested on its own for debugging or development. Requires Poetry >= 2.0.0.
 
 ```
 git clone http://github.com/pacificclimate/nchelpers
 cd nchelpers
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt -i https://pypi.pacificclimate.org/simple/
-pip install .
+poetry install
+# Tests can be run with `pytest`.
+poetry run pytest
 ```
-
-Tests can be run with `pytest`.
