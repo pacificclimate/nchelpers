@@ -1,5 +1,11 @@
 News / Release Notes
 ====================
+5.5.12
+-----
+*Release Date: 2025 Jun 17*
+
+* Maintenance updates, poetry and python version
+
 5.5.11
 -----
 *Release Date: 30-Aug-2023*

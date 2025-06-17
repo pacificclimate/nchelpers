@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "nchelpers"
-version = "5.5.11"
+version = "5.5.12"
 description = "Helper classes and methods for Climate and Forecast NetCDF datasets"
 authors = [{ name = "Rod Glover", email = "rglover@uvic.ca" }]
 license = { text = "GPL-3.0" }
