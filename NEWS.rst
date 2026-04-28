@@ -1,5 +1,12 @@
 News / Release Notes
 ====================
+
+6.0.0
+-----
+*Release Date: 2026 Apr 28*
+
+* Maintenance updates
+
 5.5.12
 -----
 *Release Date: 2025 Jun 17*
